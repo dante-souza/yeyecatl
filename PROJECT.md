@@ -9,7 +9,7 @@
 
 ## 1. Project Description
 
-**Yeyecatl** is a native Android application for observing, analyzing, recording, and comparing nearby Wi-Fi environments from a mobile device.
+**Yeyecatl** is a native Android application for observing, analyzing, recording, and comparing nearby Wi-Fi environments from a mobile device inspired in InSSIDer app/program.
 
 It is the mobile sibling of **Ehécatl**. The two applications are independent implementations that share concepts and, eventually, interoperable observation/export contracts.
 
