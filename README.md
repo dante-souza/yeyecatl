@@ -378,6 +378,49 @@ The project will document these boundaries rather than pretending the phone can 
 
 ---
 
+
+## Agent-Assisted Development
+
+Yeyecatl includes a repository-native agent system inspired by the **Cerberus** project pattern:
+
+```text
+AGENTS.md
+├── repository-wide engineering policy
+│
+.github/agents/
+├── product-owner
+├── architect
+├── wifi-domain
+├── developer + task-worker
+├── qa-engineer
+└── reviewer + specialized reviewers
+│
+.github/skills/
+├── android-platform
+├── wifi-scanning
+├── rf-analysis
+├── compose-ui
+├── architecture
+├── test-strategy
+├── security-privacy
+├── quality-gates
+├── logging
+├── makefile-workflow
+└── release
+```
+
+The agents do not replace project rules: `PROJECT.md` defines the product and objectives, `AGENTS.md` defines repository-wide operating rules, and skills provide focused technical policy that agents load according to the task.
+
+Useful inspection commands:
+
+```bash
+make agents-list
+make skills-list
+make agents-check
+```
+
+---
+
 ## Repository Direction
 
 A likely future repository organization is:
