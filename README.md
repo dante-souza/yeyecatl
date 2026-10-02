@@ -146,6 +146,8 @@ The preferred application direction is:
 | Build | Gradle underneath the Android project |
 | Project entry points | **Makefile** |
 
+Phase 1 SDK baseline decisions are documented in `docs/adr/ADR-001-android-sdk-baseline.md`: `minSdk = 29`, `targetSdk = 36`, and `compileSdk = 36`. These are Phase 1 decisions, not immutable project requirements.
+
 The Makefile remains the human-facing execution layer for the repository.
 
 Developers should not need to remember long Gradle, ADB or helper-script commands for routine project operations.
@@ -213,6 +215,11 @@ Observation
 ```
 
 The exact schema will evolve as we inspect what Android exposes reliably across versions and devices.
+
+The Phase 0 observation and scan-state contracts are documented in:
+
+- `docs/architecture/wifi-observation-model.md`
+- `docs/architecture/scan-state-model.md`
 
 This shared model will make it possible to compare Yeyecatl observations with Ehécatl captures later without forcing both applications to share implementation code.
 
@@ -337,6 +344,8 @@ The project will document these boundaries rather than pretending the phone can 
 - determine how 2.4, 5 and 6 GHz observations are reported;
 - define the first observation schema.
 
+Phase 0 outputs are recorded in `docs/research/`, `docs/architecture/`, and `docs/adr/`.
+
 ### Phase 1 — Minimal Scanner
 
 - create Android project;
@@ -452,6 +461,8 @@ Current artifacts:
 - project identity defined;
 - initial logo created;
 - initial README created;
+- Phase 0 Android Wi-Fi platform contract documented;
+- Phase 0 observation model, scan-state model and ADRs accepted;
 - Android application scaffolding not yet created.
 
 That separation is intentional: first define what the instrument should observe, then choose the exact implementation around the capabilities Android actually exposes.

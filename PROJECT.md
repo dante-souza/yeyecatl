@@ -154,6 +154,18 @@ Architecture goals:
 - RF calculations are pure functions where possible.
 - storage/export formats are versioned.
 
+Phase 0 platform and architecture decisions are recorded in:
+
+- `docs/research/android-wifi-platform-contract.md`
+- `docs/research/android-wifi-permissions-matrix.md`
+- `docs/architecture/wifi-observation-model.md`
+- `docs/architecture/scan-state-model.md`
+- `docs/adr/ADR-001-android-sdk-baseline.md`
+- `docs/adr/ADR-002-wifi-scan-permission-contract.md`
+- `docs/adr/ADR-003-platform-neutral-observation-schema.md`
+- `docs/adr/ADR-004-scan-freshness-and-state-semantics.md`
+- `docs/adr/ADR-005-ssid-bssid-mlo-privacy.md`
+
 ## 5. Suggested Modules / Packages
 
 This is a direction, not a mandatory multi-module split on day one.
@@ -190,7 +202,7 @@ Start simple. Split into Gradle modules only when build time, ownership, or depe
 
 | Phase | Goal | Exit criterion |
 |---|---|---|
-| 0 | Platform research | permissions, scan restrictions and device capability model documented |
+| 0 | Platform research | permissions, scan restrictions and device capability model documented in research, architecture and ADR files |
 | 1 | Minimal scanner | nearby scans normalized and displayed reliably |
 | 2 | Analyzer | band/channel views and filtering implemented |
 | 3 | History | observation persistence and signal history available |
