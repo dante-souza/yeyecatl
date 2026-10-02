@@ -162,6 +162,7 @@ make setup
 make build
 make test
 make unit-test
+make android-test
 make lint
 make check
 make install-debug
@@ -358,6 +359,14 @@ Phase 0 outputs are recorded in `docs/research/`, `docs/architecture/`, and `doc
 - configure JVM unit tests and Android instrumentation test infrastructure;
 - expose build, test, lint, install and adb entry points through Makefile.
 
+### Phase 1B — Android Wi-Fi Platform Readiness
+
+- declare only the Wi-Fi and location permissions/features needed for platform readiness and future foreground discovery;
+- expose Wi-Fi hardware, Wi-Fi state, Location Services and scan-permission readiness;
+- request scan permission only after explicit user action;
+- keep Android Wi-Fi and permission APIs under `platform/wifi`;
+- keep Wi-Fi scanning intentionally unimplemented.
+
 ### Phase 1 — Minimal Scanner
 
 - create Android project;
@@ -476,6 +485,7 @@ Current artifacts:
 - Phase 0 Android Wi-Fi platform contract documented;
 - Phase 0 observation model, scan-state model and ADRs accepted;
 - Phase 1A Android project foundation created;
+- Phase 1B Android Wi-Fi platform readiness created;
 - Wi-Fi scanning not yet implemented.
 
 That separation is intentional: first define what the instrument should observe, then choose the exact implementation around the capabilities Android actually exposes.

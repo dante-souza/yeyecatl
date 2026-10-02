@@ -13,5 +13,6 @@ class YeyecatlAppTest {
     @Test
     fun placeholderIdentifiesApplication() {
         composeRule.onNodeWithText("Yeyecatl").assertIsDisplayed()
+        composeRule.onNodeWithText("Not implemented").assertIsDisplayed()
     }
 }

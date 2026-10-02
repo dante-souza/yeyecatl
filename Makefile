@@ -2,7 +2,7 @@ SHELL := /bin/sh
 GRADLE ?= ./gradlew.bat
 ADB ?= adb
 
-.PHONY: help setup build assemble-debug test unit-test lint check clean install-debug adb-devices agents-list skills-list agents-check
+.PHONY: help setup build assemble-debug test unit-test android-test lint check clean install-debug adb-devices agents-list skills-list agents-check
 
 help:
 	@printf '%s\n' \
@@ -13,6 +13,7 @@ help:
 	  '  make assemble-debug Assemble the debug APK' \
 	  '  make test          Run JVM unit tests' \
 	  '  make unit-test     Run JVM unit tests' \
+	  '  make android-test  Run connected Android tests' \
 	  '  make lint          Run Android lint' \
 	  '  make check         Run build, tests, lint and agent validation' \
 	  '  make clean         Remove Gradle build outputs' \
@@ -23,6 +24,20 @@ help:
 	  '  make agents-check  Validate agent/skill files'
 
 setup:
+	@printf 'JAVA_HOME=%s\n' "$${JAVA_HOME:-<unset>}"
+	@if [ -z "$${ANDROID_HOME:-}" ] && [ -z "$${ANDROID_SDK_ROOT:-}" ]; then \
+	  printf '%s\n' 'ERROR: set ANDROID_HOME or ANDROID_SDK_ROOT to a valid Android SDK.'; \
+	  exit 1; \
+	fi
+	@printf 'ANDROID_HOME=%s\n' "$${ANDROID_HOME:-<unset>}"
+	@printf 'ANDROID_SDK_ROOT=%s\n' "$${ANDROID_SDK_ROOT:-<unset>}"
+	@printf 'Android Gradle Plugin='
+	@sed -n 's/^agp = "\(.*\)"/\1/p' gradle/libs.versions.toml
+	@if command -v $(ADB) >/dev/null 2>&1; then \
+	  $(ADB) version; \
+	else \
+	  printf '%s\n' 'WARNING: adb not found on PATH; install-debug and adb-devices will fail.'; \
+	fi
 	@$(GRADLE) --version
 
 build: assemble-debug
@@ -34,6 +49,9 @@ test: unit-test
 
 unit-test:
 	@$(GRADLE) :app:testDebugUnitTest
+
+android-test:
+	@$(GRADLE) :app:connectedDebugAndroidTest
 
 lint:
 	@$(GRADLE) :app:lintDebug
