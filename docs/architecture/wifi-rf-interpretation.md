@@ -90,7 +90,8 @@ The primary frequency is the Android-reported primary 20 MHz frequency. Center
 frequency 0 and center frequency 1 are preserved separately. Wider channels must
 not assume the primary frequency is the center of the full occupied channel.
 
-Phase 1D does not compute lower/upper occupied frequencies.
+Phase 1D does not compute lower/upper occupied frequencies. Phase 1E adds that
+nominal geometry in `docs/architecture/wifi-spectrum-geometry.md`.
 
 ## Wi-Fi Standard
 
@@ -108,7 +109,7 @@ does not silently coerce unknown data into the closest known RF value.
 
 ## Non-Goals
 
-- Channel overlap.
+- Channel overlap in Phase 1D. Phase 1E adds geometric overlap only.
 - Interference scoring.
 - Channel recommendations.
 - Regulatory-domain enforcement.

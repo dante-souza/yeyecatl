@@ -24,6 +24,9 @@ import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanResultSource
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanSnapshot
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanState
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiRfInterpreter
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumCompleteness
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumGeometry
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumSegment
 import io.github.dante_souza.yeyecatl.platform.wifi.LocationServicesStatus
 import io.github.dante_souza.yeyecatl.platform.wifi.PermissionGrantState
 import io.github.dante_souza.yeyecatl.platform.wifi.PermissionRequirement
@@ -118,7 +121,7 @@ fun YeyecatlReadinessScreen(
         ScanResults(scanState.latestSnapshot)
 
         Text(
-            text = "Phase 1C: acquisition only. RF/channel analysis is intentionally not implemented yet.",
+            text = "Phase 1E: nominal geometry only. Interference analysis is intentionally not implemented yet.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 16.dp)
@@ -235,20 +238,22 @@ private fun WifiScanObservation.rowText(): String {
     } else {
         "<unavailable>"
     }
+    val rf = WifiRfInterpreter.interpret(this)
+    val footprint = WifiSpectrumGeometry.footprint(rf)
     return listOf(
         "SSID: $ssidText",
         "BSSID: ${bssid ?: "<no BSSID>"}",
         "RSSI: ${rssiDbm?.let { "$it dBm" } ?: "?"}",
         "Band: ${rf.band.label()}",
         "Channel: ${rf.primaryChannel?.toString() ?: "unknown"}",
-        "Frequency: ${frequencyMhz?.let { "$it MHz" } ?: "unknown"}",
+        "Primary: ${frequencyMhz?.let { "$it MHz" } ?: "unknown"}",
         "Width: ${rf.channelWidth.label()}",
+        "Center: ${centerFrequency0Mhz?.let { "$it MHz" } ?: "unknown"}",
+        "Span: ${footprint.spanText()}",
+        "Geometry: ${footprint.completeness.label()}",
         "Standard: ${rf.wifiStandard.label()}"
     ).joinToString(separator = "  ")
 }
-
-private val WifiScanObservation.rf
-    get() = WifiRfInterpreter.interpret(this)
 
 private fun io.github.dante_souza.yeyecatl.domain.wifi.WifiBand.label(): String =
     when (this) {
@@ -279,6 +284,24 @@ private fun io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.label(): Str
         io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Ieee80211ad -> "802.11ad"
         io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Ieee80211be -> "802.11be"
         io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Unknown -> "Unknown"
+    }
+
+private fun io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumFootprint.spanText(): String =
+    if (segments.isEmpty()) {
+        "unavailable"
+    } else {
+        segments.joinToString(separator = "; ") { it.spanText() }
+    }
+
+private fun WifiSpectrumSegment.spanText(): String =
+    "${lowerFrequencyMhz}-${upperFrequencyMhz} MHz"
+
+private fun WifiSpectrumCompleteness.label(): String =
+    when (this) {
+        WifiSpectrumCompleteness.Complete -> "Complete"
+        WifiSpectrumCompleteness.Partial -> "Partial"
+        WifiSpectrumCompleteness.Unavailable -> "Unavailable"
+        WifiSpectrumCompleteness.Inconsistent -> "Inconsistent"
     }
 
 private fun Boolean.yesNo(): String =
@@ -313,6 +336,7 @@ private fun previewScanState(): WifiScanState =
                     bssid = "xx:xx:xx:xx:xx:xx",
                     rssiDbm = -42,
                     frequencyMhz = 2412,
+                    channelWidth = io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Mhz20,
                     capabilities = "[WPA2-PSK-CCMP][ESS]",
                     platformTimestampMicros = 1234L
                 )
