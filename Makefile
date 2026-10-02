@@ -1,8 +1,9 @@
 SHELL := /bin/sh
 GRADLE ?= ./gradlew.bat
 ADB ?= adb
+APP_ID := io.github.dante_souza.yeyecatl
 
-.PHONY: help setup build assemble-debug test unit-test android-test lint check clean install-debug adb-devices agents-list skills-list agents-check
+.PHONY: help setup build assemble-debug test unit-test android-test lint check clean install-debug adb-devices device-info device-smoke logcat app-logcat device-diagnostics agents-list skills-list agents-check
 
 help:
 	@printf '%s\n' \
@@ -19,6 +20,11 @@ help:
 	  '  make clean         Remove Gradle build outputs' \
 	  '  make install-debug Install debug APK with adb' \
 	  '  make adb-devices   List connected adb devices' \
+	  '  make device-info   Show connected device/app environment' \
+	  '  make device-smoke  Install and launch the debug app' \
+	  '  make logcat        Stream device logcat' \
+	  '  make app-logcat    Stream Yeyecatl scan diagnostics' \
+	  '  make device-diagnostics Write sanitized device diagnostics' \
 	  '  make agents-list   List configured agents' \
 	  '  make skills-list   List configured skills' \
 	  '  make agents-check  Validate agent/skill files'
@@ -66,6 +72,42 @@ install-debug:
 
 adb-devices:
 	@$(ADB) devices
+
+device-info:
+	@printf 'manufacturer='; $(ADB) shell getprop ro.product.manufacturer
+	@printf 'model='; $(ADB) shell getprop ro.product.model
+	@printf 'android_release='; $(ADB) shell getprop ro.build.version.release
+	@printf 'api_level='; $(ADB) shell getprop ro.build.version.sdk
+	@printf 'abi='; $(ADB) shell getprop ro.product.cpu.abi
+	@$(ADB) shell wm size
+	@$(ADB) shell wm density
+	@$(ADB) shell pm list features | grep 'android.hardware.wifi' || true
+	@$(ADB) shell dumpsys package $(APP_ID) | grep -E 'versionName|versionCode' || true
+
+device-smoke: install-debug
+	@$(ADB) shell monkey -p $(APP_ID) 1
+
+logcat:
+	@$(ADB) logcat
+
+app-logcat:
+	@$(ADB) logcat -s YeyecatlWifiScan:D AndroidRuntime:E '*:S'
+
+device-diagnostics:
+	@mkdir -p build/device-diagnostics
+	@{ \
+	  printf 'Yeyecatl device diagnostics\n'; \
+	  printf 'manufacturer='; $(ADB) shell getprop ro.product.manufacturer; \
+	  printf 'model='; $(ADB) shell getprop ro.product.model; \
+	  printf 'android_release='; $(ADB) shell getprop ro.build.version.release; \
+	  printf 'api_level='; $(ADB) shell getprop ro.build.version.sdk; \
+	  printf 'abi='; $(ADB) shell getprop ro.product.cpu.abi; \
+	  $(ADB) shell wm size; \
+	  $(ADB) shell wm density; \
+	  $(ADB) shell pm list features | grep 'android.hardware.wifi' || true; \
+	  $(ADB) shell dumpsys package $(APP_ID) | grep -E 'versionName|versionCode' || true; \
+	} > build/device-diagnostics/device-info.txt
+	@printf '%s\n' 'Wrote build/device-diagnostics/device-info.txt'
 
 agents-list:
 	@find .github/agents -maxdepth 1 -type f -name '*.agent.md' -print | sort

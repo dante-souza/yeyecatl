@@ -176,6 +176,7 @@ Phase 0 platform and architecture decisions are recorded in:
 - `docs/adr/ADR-010-nominal-spectrum-geometry.md`
 - `docs/architecture/wifi-spectrum-visualization.md`
 - `docs/adr/ADR-011-spectrum-visualization-boundary.md`
+- `docs/testing/android-device-validation.md`
 
 ## 5. Suggested Modules / Packages
 

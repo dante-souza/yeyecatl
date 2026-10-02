@@ -170,6 +170,9 @@ make adb-devices
 make clean
 ```
 
+Physical-device validation procedures are documented in
+`docs/testing/android-device-validation.md`.
+
 Gradle and ADB remain available underneath these targets, but routine local development should start with `make`.
 
 ---

@@ -1,6 +1,7 @@
 package io.github.dante_souza.yeyecatl.platform.wifi
 
 import android.annotation.SuppressLint
+import android.content.pm.ApplicationInfo
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -8,8 +9,10 @@ import android.content.IntentFilter
 import android.net.wifi.ScanResult
 import android.net.wifi.WifiManager
 import android.os.Build
+import android.util.Log
 import androidx.core.content.ContextCompat
 import io.github.dante_souza.yeyecatl.domain.wifi.RawWifiScanObservation
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiRfInterpreter
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanBlockReason
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanFreshness
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanObservation
@@ -53,6 +56,7 @@ class AndroidWifiScanRepository(
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
         receiverRegistered = true
+        devLog("scan receiver registered")
     }
 
     override fun stop() {
@@ -65,6 +69,7 @@ class AndroidWifiScanRepository(
         }
         receiverRegistered = false
         requestInFlight = false
+        devLog("scan receiver unregistered")
     }
 
     @SuppressLint("MissingPermission")
@@ -78,12 +83,14 @@ class AndroidWifiScanRepository(
         )
         val blockReason = WifiScanReadinessPolicy.blockReason(readiness)
         if (blockReason != null) {
+            devLog("scan request blocked reason=$blockReason")
             state.value = WifiScanStateTransitions.blocked(state.value, blockReason)
             return
         }
 
         val manager = wifiManager
         if (manager == null) {
+            devLog("scan request blocked reason=${WifiScanBlockReason.WifiHardwareUnavailable}")
             state.value = WifiScanStateTransitions.blocked(
                 state.value,
                 WifiScanBlockReason.WifiHardwareUnavailable
@@ -92,23 +99,28 @@ class AndroidWifiScanRepository(
         }
 
         state.value = WifiScanStateTransitions.request(state.value)
+        devLog("scan request attempted")
 
         try {
             val accepted = manager.startScan()
             if (accepted) {
                 requestInFlight = true
+                devLog("scan request accepted")
             } else {
                 requestInFlight = false
+                devLog("scan request rejected")
                 state.value = WifiScanStateTransitions.requestRejected(state.value)
             }
         } catch (_: SecurityException) {
             requestInFlight = false
+            devLog("scan request security failure")
             state.value = WifiScanStateTransitions.blocked(
                 state.value,
                 WifiScanBlockReason.PermissionUnavailable
             )
         } catch (_: RuntimeException) {
             requestInFlight = false
+            devLog("scan request runtime failure")
             state.value = WifiScanStateTransitions.error(
                 state.value,
                 "Android failed to request a Wi-Fi scan."
@@ -135,12 +147,20 @@ class AndroidWifiScanRepository(
             false -> WifiScanFreshness.Cached
             null -> WifiScanFreshness.Unknown
         }
+        devLog(
+            "scan broadcast source=$source resultsUpdated=$resultsUpdated freshness=$freshness"
+        )
 
         try {
             val observations = wifiManager
                 ?.scanResults
                 .orEmpty()
                 .map(::mapScanResult)
+            devLog(
+                "scan results mapped count=${observations.size} " +
+                    "bands=${observations.map { WifiRfInterpreter.bandForFrequency(it.frequencyMhz) }.toSet()} " +
+                    "widths=${observations.map { it.channelWidth }.toSet()}"
+            )
 
             state.value = WifiScanStateTransitions.resultsAvailable(
                 current = state.value,
@@ -151,11 +171,13 @@ class AndroidWifiScanRepository(
                 receivedAtMillis = System.currentTimeMillis()
             )
         } catch (_: SecurityException) {
+            devLog("scan results security failure")
             state.value = WifiScanStateTransitions.blocked(
                 state.value,
                 WifiScanBlockReason.PermissionUnavailable
             )
         } catch (_: RuntimeException) {
+            devLog("scan results runtime failure")
             state.value = WifiScanStateTransitions.error(
                 state.value,
                 "Android failed to read Wi-Fi scan results."
@@ -194,5 +216,15 @@ class AndroidWifiScanRepository(
                 platformTimestampMicros = scanResult.timestamp
             )
         )
+
+    private fun devLog(message: String) {
+        if ((appContext.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+            Log.d(LOG_TAG, message)
+        }
+    }
+
+    private companion object {
+        const val LOG_TAG = "YeyecatlWifiScan"
+    }
 
 }
