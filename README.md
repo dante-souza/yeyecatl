@@ -232,6 +232,7 @@ The Phase 1B/1C Android implementation boundaries are documented in:
 - `docs/architecture/android-wifi-scan-acquisition.md`
 - `docs/architecture/wifi-rf-interpretation.md`
 - `docs/architecture/wifi-spectrum-geometry.md`
+- `docs/architecture/wifi-spectrum-visualization.md`
 
 This shared model will make it possible to compare Yeyecatl observations with Ehécatl captures later without forcing both applications to share implementation code.
 
@@ -396,6 +397,13 @@ Phase 0 outputs are recorded in `docs/research/`, `docs/architecture/`, and `doc
 - calculate geometric overlap bandwidth using MHz intervals;
 - keep interference analysis, scoring, recommendations and graphical channel views intentionally unimplemented.
 
+### Phase 1F — Wi-Fi Spectrum Visualization
+
+- render 2.4 GHz, 5 GHz and 6 GHz band-specific spectrum charts;
+- project frequency and RSSI into screen coordinates without deriving RF facts in Compose;
+- preserve 80+80 MHz as separate visual segments and 320 MHz as one contiguous span;
+- keep scoring, recommendations, automatic scanning and historical visualization intentionally unimplemented.
+
 ### Phase 1 — Minimal Scanner
 
 - create Android project;
@@ -518,6 +526,7 @@ Current artifacts:
 - Phase 1C foreground Wi-Fi scan acquisition created.
 - Phase 1D pure RF interpretation created.
 - Phase 1E nominal spectrum geometry created.
+- Phase 1F spectrum visualization created.
 
 That separation is intentional: first define what the instrument should observe, then choose the exact implementation around the capabilities Android actually exposes.
 

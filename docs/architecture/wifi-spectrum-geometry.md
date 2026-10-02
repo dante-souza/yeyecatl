@@ -6,6 +6,9 @@ Phase 1E adds a pure Kotlin nominal spectrum geometry layer. It converts
 interpreted RF characteristics into nominal occupied frequency segment(s), then
 calculates mathematical overlap between footprints.
 
+Phase 1F consumes this geometry for graphical rendering in
+`docs/architecture/wifi-spectrum-visualization.md`.
+
 This is not an RF spectral-mask model. It does not model sidelobes, transmitter
 leakage, receiver selectivity, adjacent-channel rejection, airtime, traffic, or
 real interference severity.

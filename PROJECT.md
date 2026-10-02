@@ -174,6 +174,8 @@ Phase 0 platform and architecture decisions are recorded in:
 - `docs/adr/ADR-009-pure-rf-interpretation-layer.md`
 - `docs/architecture/wifi-spectrum-geometry.md`
 - `docs/adr/ADR-010-nominal-spectrum-geometry.md`
+- `docs/architecture/wifi-spectrum-visualization.md`
+- `docs/adr/ADR-011-spectrum-visualization-boundary.md`
 
 ## 5. Suggested Modules / Packages
 
@@ -217,6 +219,7 @@ Start simple. Split into Gradle modules only when build time, ownership, or depe
 | 1C | Scan acquisition | user-triggered Android Wi-Fi scans acquired and displayed without RF/channel analysis |
 | 1D | RF interpretation | raw observations interpreted into band, channel, width and Wi-Fi standard |
 | 1E | Spectrum geometry | nominal occupied spans and geometric overlap calculated without interference scoring |
+| 1F | Spectrum visualization | 2.4/5/6 GHz channel graph rendered from domain geometry without scoring |
 | 1 | Minimal scanner | nearby scans normalized and displayed reliably |
 | 2 | Analyzer | band/channel views and filtering implemented |
 | 3 | History | observation persistence and signal history available |

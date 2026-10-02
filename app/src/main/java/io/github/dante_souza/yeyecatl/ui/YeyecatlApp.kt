@@ -5,18 +5,27 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import io.github.dante_souza.yeyecatl.domain.wifi.ObservedSsid
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiBand
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanBlockReason
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanFreshness
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanObservation
@@ -27,6 +36,7 @@ import io.github.dante_souza.yeyecatl.domain.wifi.WifiRfInterpreter
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumCompleteness
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumGeometry
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumSegment
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard
 import io.github.dante_souza.yeyecatl.platform.wifi.LocationServicesStatus
 import io.github.dante_souza.yeyecatl.platform.wifi.PermissionGrantState
 import io.github.dante_souza.yeyecatl.platform.wifi.PermissionRequirement
@@ -36,6 +46,7 @@ import io.github.dante_souza.yeyecatl.platform.wifi.WifiDiscoveryPermissionStatu
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiHardwareStatus
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiPlatformReadiness
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiPowerStatus
+import io.github.dante_souza.yeyecatl.ui.spectrum.WifiSpectrumChart
 
 @Composable
 fun YeyecatlApp(
@@ -121,7 +132,7 @@ fun YeyecatlReadinessScreen(
         ScanResults(scanState.latestSnapshot)
 
         Text(
-            text = "Phase 1E: nominal geometry only. Interference analysis is intentionally not implemented yet.",
+            text = "Phase 1F: spectrum visualization only. Interference analysis is intentionally not implemented yet.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 16.dp)
@@ -136,6 +147,19 @@ private fun ScanResults(snapshot: WifiScanSnapshot?) {
         return
     }
 
+    var selectedBandName by rememberSaveable { mutableStateOf(WifiBand.Ghz2_4.name) }
+    val selectedBand = WifiBand.valueOf(selectedBandName)
+
+    BandSelector(
+        selectedBand = selectedBand,
+        onSelected = { selectedBandName = it.name }
+    )
+    WifiSpectrumChart(
+        observations = snapshot.observations,
+        band = selectedBand,
+        modifier = Modifier.padding(top = 16.dp)
+    )
+
     ReadinessRow("Observed networks", snapshot.observations.size.toString())
     ReadinessRow("Freshness", snapshot.freshness.label())
     snapshot.observations.forEach { observation ->
@@ -144,6 +168,31 @@ private fun ScanResults(snapshot: WifiScanSnapshot?) {
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(top = 8.dp)
         )
+    }
+}
+
+@Composable
+private fun BandSelector(
+    selectedBand: WifiBand,
+    onSelected: (WifiBand) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 24.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        listOf(WifiBand.Ghz2_4, WifiBand.Ghz5, WifiBand.Ghz6).forEach { band ->
+            if (band == selectedBand) {
+                Button(onClick = { onSelected(band) }) {
+                    Text(band.label())
+                }
+            } else {
+                OutlinedButton(onClick = { onSelected(band) }) {
+                    Text(band.label())
+                }
+            }
+        }
     }
 }
 
@@ -327,18 +376,54 @@ private fun previewScanState(): WifiScanState =
     WifiScanState.Results(
         WifiScanSnapshot(
             observations = listOf(
-                WifiScanObservation(
-                    ssid = io.github.dante_souza.yeyecatl.domain.wifi.ObservedSsid(
-                        displayText = "whanganui",
-                        rawBytes = null,
-                        isHidden = false
-                    ),
-                    bssid = "xx:xx:xx:xx:xx:xx",
-                    rssiDbm = -42,
-                    frequencyMhz = 2412,
-                    channelWidth = io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Mhz20,
-                    capabilities = "[WPA2-PSK-CCMP][ESS]",
-                    platformTimestampMicros = 1234L
+                previewObservation("whanganui", "00:11:22:33:44:01", -42, 2412),
+                previewObservation("Te Moana", "00:11:22:33:44:06", -61, 2437),
+                previewObservation("IoT", "00:11:22:33:44:11", -73, 2462),
+                previewObservation(
+                    ssid = "Punga-5",
+                    bssid = "00:11:22:33:55:36",
+                    rssiDbm = -48,
+                    frequencyMhz = 5180,
+                    width = WifiChannelWidth.Mhz80,
+                    center0 = 5210,
+                    standard = WifiStandard.Ieee80211ac
+                ),
+                previewObservation(
+                    ssid = "Lab-160",
+                    bssid = "00:11:22:33:55:64",
+                    rssiDbm = -66,
+                    frequencyMhz = 5180,
+                    width = WifiChannelWidth.Mhz160,
+                    center0 = 5250,
+                    standard = WifiStandard.Ieee80211ax
+                ),
+                previewObservation(
+                    ssid = "Backhaul",
+                    bssid = "00:11:22:33:55:80",
+                    rssiDbm = -70,
+                    frequencyMhz = 5180,
+                    width = WifiChannelWidth.Mhz80Plus80,
+                    center0 = 5210,
+                    center1 = 5530,
+                    standard = WifiStandard.Ieee80211ac
+                ),
+                previewObservation(
+                    ssid = "Rua-6",
+                    bssid = "00:11:22:33:66:01",
+                    rssiDbm = -55,
+                    frequencyMhz = 5955,
+                    width = WifiChannelWidth.Mhz80,
+                    center0 = 5985,
+                    standard = WifiStandard.Ieee80211ax
+                ),
+                previewObservation(
+                    ssid = "Rua-320",
+                    bssid = "00:11:22:33:66:02",
+                    rssiDbm = -67,
+                    frequencyMhz = 5975,
+                    width = WifiChannelWidth.Mhz320,
+                    center0 = 6105,
+                    standard = WifiStandard.Ieee80211be
                 )
             ),
             freshness = WifiScanFreshness.Fresh,
@@ -346,6 +431,33 @@ private fun previewScanState(): WifiScanState =
             resultsUpdated = true,
             receivedAtMillis = 0L
         )
+    )
+
+private fun previewObservation(
+    ssid: String,
+    bssid: String,
+    rssiDbm: Int,
+    frequencyMhz: Int,
+    width: WifiChannelWidth = WifiChannelWidth.Mhz20,
+    center0: Int? = null,
+    center1: Int? = null,
+    standard: WifiStandard = WifiStandard.Ieee80211n
+): WifiScanObservation =
+    WifiScanObservation(
+        ssid = ObservedSsid(
+            displayText = ssid,
+            rawBytes = null,
+            isHidden = false
+        ),
+        bssid = bssid,
+        rssiDbm = rssiDbm,
+        frequencyMhz = frequencyMhz,
+        channelWidth = width,
+        centerFrequency0Mhz = center0,
+        centerFrequency1Mhz = center1,
+        wifiStandard = standard,
+        capabilities = "[ESS]",
+        platformTimestampMicros = 1234L
     )
 
 @Preview(showBackground = true)
