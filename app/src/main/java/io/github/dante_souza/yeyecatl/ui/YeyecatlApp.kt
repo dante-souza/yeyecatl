@@ -23,6 +23,7 @@ import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanObservation
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanResultSource
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanSnapshot
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanState
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiRfInterpreter
 import io.github.dante_souza.yeyecatl.platform.wifi.LocationServicesStatus
 import io.github.dante_souza.yeyecatl.platform.wifi.PermissionGrantState
 import io.github.dante_souza.yeyecatl.platform.wifi.PermissionRequirement
@@ -235,12 +236,50 @@ private fun WifiScanObservation.rowText(): String {
         "<unavailable>"
     }
     return listOf(
-        ssidText,
-        bssid ?: "<no BSSID>",
-        rssiDbm?.toString() ?: "?",
-        frequencyMhz?.toString() ?: "?"
+        "SSID: $ssidText",
+        "BSSID: ${bssid ?: "<no BSSID>"}",
+        "RSSI: ${rssiDbm?.let { "$it dBm" } ?: "?"}",
+        "Band: ${rf.band.label()}",
+        "Channel: ${rf.primaryChannel?.toString() ?: "unknown"}",
+        "Frequency: ${frequencyMhz?.let { "$it MHz" } ?: "unknown"}",
+        "Width: ${rf.channelWidth.label()}",
+        "Standard: ${rf.wifiStandard.label()}"
     ).joinToString(separator = "  ")
 }
+
+private val WifiScanObservation.rf
+    get() = WifiRfInterpreter.interpret(this)
+
+private fun io.github.dante_souza.yeyecatl.domain.wifi.WifiBand.label(): String =
+    when (this) {
+        io.github.dante_souza.yeyecatl.domain.wifi.WifiBand.Ghz2_4 -> "2.4 GHz"
+        io.github.dante_souza.yeyecatl.domain.wifi.WifiBand.Ghz5 -> "5 GHz"
+        io.github.dante_souza.yeyecatl.domain.wifi.WifiBand.Ghz6 -> "6 GHz"
+        io.github.dante_souza.yeyecatl.domain.wifi.WifiBand.Ghz60 -> "60 GHz"
+        io.github.dante_souza.yeyecatl.domain.wifi.WifiBand.Unknown -> "Unknown"
+    }
+
+private fun io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.label(): String =
+    when (this) {
+        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Mhz20 -> "20 MHz"
+        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Mhz40 -> "40 MHz"
+        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Mhz80 -> "80 MHz"
+        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Mhz160 -> "160 MHz"
+        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Mhz80Plus80 -> "80+80 MHz"
+        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Mhz320 -> "320 MHz"
+        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Unknown -> "Unknown"
+    }
+
+private fun io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.label(): String =
+    when (this) {
+        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Legacy -> "Legacy"
+        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Ieee80211n -> "802.11n"
+        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Ieee80211ac -> "802.11ac"
+        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Ieee80211ax -> "802.11ax"
+        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Ieee80211ad -> "802.11ad"
+        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Ieee80211be -> "802.11be"
+        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Unknown -> "Unknown"
+    }
 
 private fun Boolean.yesNo(): String =
     if (this) {

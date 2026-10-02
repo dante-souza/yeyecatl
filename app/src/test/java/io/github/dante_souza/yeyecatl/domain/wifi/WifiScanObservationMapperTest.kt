@@ -17,6 +17,10 @@ class WifiScanObservationMapperTest {
                 bssid = "00:11:22:33:44:55",
                 rssiDbm = -42,
                 frequencyMhz = 2412,
+                channelWidth = WifiChannelWidth.Mhz20,
+                centerFrequency0Mhz = 2412,
+                centerFrequency1Mhz = 0,
+                wifiStandard = WifiStandard.Ieee80211n,
                 capabilities = "[WPA2-PSK-CCMP][ESS]",
                 platformTimestampMicros = 123456L
             )
@@ -28,6 +32,10 @@ class WifiScanObservationMapperTest {
         assertEquals("00:11:22:33:44:55", observation.bssid)
         assertEquals(-42, observation.rssiDbm)
         assertEquals(2412, observation.frequencyMhz)
+        assertEquals(WifiChannelWidth.Mhz20, observation.channelWidth)
+        assertEquals(2412, observation.centerFrequency0Mhz)
+        assertNull(observation.centerFrequency1Mhz)
+        assertEquals(WifiStandard.Ieee80211n, observation.wifiStandard)
         assertEquals("[WPA2-PSK-CCMP][ESS]", observation.capabilities)
         assertEquals(123456L, observation.platformTimestampMicros)
     }

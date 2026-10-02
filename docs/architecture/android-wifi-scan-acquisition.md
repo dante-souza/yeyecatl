@@ -7,7 +7,8 @@ scan only after a user action, listens for Android scan-result availability, and
 maps `ScanResult` values into Android-independent Yeyecatl observations.
 
 It does not analyze RF/channel data, persist observations, export identifiers,
-or perform periodic/background scanning.
+or perform periodic/background scanning. Phase 1D adds RF interpretation in
+`docs/architecture/wifi-rf-interpretation.md`.
 
 ## Implemented Scope
 
@@ -119,8 +120,9 @@ text.
 
 ## Deliberately Unimplemented
 
-- RF/channel analysis.
-- Channel number, band, overlap, utilization, or signal-quality calculations.
+- RF/channel analysis in Phase 1C. Phase 1D adds first band/channel
+  interpretation only.
+- Channel overlap, utilization, or signal-quality calculations.
 - Security normalization.
 - Access-point grouping.
 - Persistence, history, export, upload, telemetry, charts, maps, or CI/CD.

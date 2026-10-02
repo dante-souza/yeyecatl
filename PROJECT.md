@@ -170,6 +170,8 @@ Phase 0 platform and architecture decisions are recorded in:
 - `docs/adr/ADR-007-android-wifi-platform-readiness-boundary.md`
 - `docs/architecture/android-wifi-scan-acquisition.md`
 - `docs/adr/ADR-008-android-wifi-scan-acquisition-lifecycle.md`
+- `docs/architecture/wifi-rf-interpretation.md`
+- `docs/adr/ADR-009-pure-rf-interpretation-layer.md`
 
 ## 5. Suggested Modules / Packages
 
@@ -211,6 +213,7 @@ Start simple. Split into Gradle modules only when build time, ownership, or depe
 | 1A | Android foundation | single-module Android app builds, tests and lints through Makefile targets |
 | 1B | Platform readiness | Wi-Fi hardware, state and permission readiness exposed without scanning |
 | 1C | Scan acquisition | user-triggered Android Wi-Fi scans acquired and displayed without RF/channel analysis |
+| 1D | RF interpretation | raw observations interpreted into band, channel, width and Wi-Fi standard |
 | 1 | Minimal scanner | nearby scans normalized and displayed reliably |
 | 2 | Analyzer | band/channel views and filtering implemented |
 | 3 | History | observation persistence and signal history available |

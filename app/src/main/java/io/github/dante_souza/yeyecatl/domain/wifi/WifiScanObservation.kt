@@ -11,6 +11,10 @@ data class WifiScanObservation(
     val bssid: String?,
     val rssiDbm: Int?,
     val frequencyMhz: Int?,
+    val channelWidth: WifiChannelWidth = WifiChannelWidth.Unknown,
+    val centerFrequency0Mhz: Int? = null,
+    val centerFrequency1Mhz: Int? = null,
+    val wifiStandard: WifiStandard = WifiStandard.Unknown,
     val capabilities: String?,
     val platformTimestampMicros: Long?
 )
@@ -21,6 +25,10 @@ data class RawWifiScanObservation(
     val bssid: String?,
     val rssiDbm: Int?,
     val frequencyMhz: Int?,
+    val channelWidth: WifiChannelWidth = WifiChannelWidth.Unknown,
+    val centerFrequency0Mhz: Int? = null,
+    val centerFrequency1Mhz: Int? = null,
+    val wifiStandard: WifiStandard = WifiStandard.Unknown,
     val capabilities: String?,
     val platformTimestampMicros: Long?
 )
@@ -40,6 +48,10 @@ object WifiScanObservationMapper {
             bssid = raw.bssid?.takeUnless { it.isBlank() },
             rssiDbm = raw.rssiDbm,
             frequencyMhz = raw.frequencyMhz?.takeIf { it > 0 },
+            channelWidth = raw.channelWidth,
+            centerFrequency0Mhz = raw.centerFrequency0Mhz?.takeIf { it > 0 },
+            centerFrequency1Mhz = raw.centerFrequency1Mhz?.takeIf { it > 0 },
+            wifiStandard = raw.wifiStandard,
             capabilities = raw.capabilities?.takeUnless { it.isBlank() },
             platformTimestampMicros = raw.platformTimestampMicros?.takeIf { it > 0L }
         )

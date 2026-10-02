@@ -176,6 +176,20 @@ class AndroidWifiScanRepository(
                 bssid = scanResult.BSSID,
                 rssiDbm = scanResult.level,
                 frequencyMhz = scanResult.frequency,
+                channelWidth = AndroidWifiRadioMetadataMapper.channelWidth(
+                    apiLevel = Build.VERSION.SDK_INT,
+                    rawChannelWidth = scanResult.channelWidth
+                ),
+                centerFrequency0Mhz = scanResult.centerFreq0,
+                centerFrequency1Mhz = scanResult.centerFreq1,
+                wifiStandard = AndroidWifiRadioMetadataMapper.wifiStandard(
+                    apiLevel = Build.VERSION.SDK_INT,
+                    rawWifiStandard = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        scanResult.wifiStandard
+                    } else {
+                        null
+                    }
+                ),
                 capabilities = scanResult.capabilities,
                 platformTimestampMicros = scanResult.timestamp
             )

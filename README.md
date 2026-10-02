@@ -230,6 +230,7 @@ The Phase 1B/1C Android implementation boundaries are documented in:
 
 - `docs/architecture/android-wifi-platform-readiness.md`
 - `docs/architecture/android-wifi-scan-acquisition.md`
+- `docs/architecture/wifi-rf-interpretation.md`
 
 This shared model will make it possible to compare Yeyecatl observations with Ehécatl captures later without forcing both applications to share implementation code.
 
@@ -380,6 +381,13 @@ Phase 0 outputs are recorded in `docs/research/`, `docs/architecture/`, and `doc
 - preserve cached/previous observations when Android rejects a request or reports stale results;
 - keep RF/channel analysis, persistence and export intentionally unimplemented.
 
+### Phase 1D — RF Domain Interpretation
+
+- preserve raw scan observations separately from derived RF data;
+- interpret observed frequencies into 2.4 GHz, 5 GHz, 6 GHz, 60 GHz or unknown bands;
+- interpret primary channel, channel width, center frequencies and Wi-Fi standard where available;
+- keep overlap, interference, recommendations, persistence and export intentionally unimplemented.
+
 ### Phase 1 — Minimal Scanner
 
 - create Android project;
@@ -500,6 +508,7 @@ Current artifacts:
 - Phase 1A Android project foundation created;
 - Phase 1B Android Wi-Fi platform readiness created;
 - Phase 1C foreground Wi-Fi scan acquisition created.
+- Phase 1D pure RF interpretation created.
 
 That separation is intentional: first define what the instrument should observe, then choose the exact implementation around the capabilities Android actually exposes.
 
