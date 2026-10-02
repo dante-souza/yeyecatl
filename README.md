@@ -148,24 +148,28 @@ The preferred application direction is:
 
 Phase 1 SDK baseline decisions are documented in `docs/adr/ADR-001-android-sdk-baseline.md`: `minSdk = 29`, `targetSdk = 36`, and `compileSdk = 36`. These are Phase 1 decisions, not immutable project requirements.
 
+Android identity is documented in `docs/adr/ADR-006-android-application-identity.md`: `namespace = "io.github.dante_souza.yeyecatl"` and `applicationId = "io.github.dante_souza.yeyecatl"`.
+
 The Makefile remains the human-facing execution layer for the repository.
 
 Developers should not need to remember long Gradle, ADB or helper-script commands for routine project operations.
 
-Example future workflow:
+Common workflow:
 
 ```text
 make help
-make doctor
+make setup
 make build
 make test
-make install
-make run
+make unit-test
 make lint
+make check
+make install-debug
+make adb-devices
 make clean
 ```
 
-The exact targets will be introduced as the project scaffolding is created.
+Gradle and ADB remain available underneath these targets, but routine local development should start with `make`.
 
 ---
 
@@ -346,6 +350,14 @@ The project will document these boundaries rather than pretending the phone can 
 
 Phase 0 outputs are recorded in `docs/research/`, `docs/architecture/`, and `docs/adr/`.
 
+### Phase 1A — Android Foundation
+
+- create the single-module Android project;
+- configure Kotlin, Jetpack Compose and Material 3;
+- add placeholder Yeyecatl UI only;
+- configure JVM unit tests and Android instrumentation test infrastructure;
+- expose build, test, lint, install and adb entry points through Makefile.
+
 ### Phase 1 — Minimal Scanner
 
 - create Android project;
@@ -463,7 +475,8 @@ Current artifacts:
 - initial README created;
 - Phase 0 Android Wi-Fi platform contract documented;
 - Phase 0 observation model, scan-state model and ADRs accepted;
-- Android application scaffolding not yet created.
+- Phase 1A Android project foundation created;
+- Wi-Fi scanning not yet implemented.
 
 That separation is intentional: first define what the instrument should observe, then choose the exact implementation around the capabilities Android actually exposes.
 

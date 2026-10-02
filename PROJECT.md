@@ -165,6 +165,7 @@ Phase 0 platform and architecture decisions are recorded in:
 - `docs/adr/ADR-003-platform-neutral-observation-schema.md`
 - `docs/adr/ADR-004-scan-freshness-and-state-semantics.md`
 - `docs/adr/ADR-005-ssid-bssid-mlo-privacy.md`
+- `docs/adr/ADR-006-android-application-identity.md`
 
 ## 5. Suggested Modules / Packages
 
@@ -203,6 +204,7 @@ Start simple. Split into Gradle modules only when build time, ownership, or depe
 | Phase | Goal | Exit criterion |
 |---|---|---|
 | 0 | Platform research | permissions, scan restrictions and device capability model documented in research, architecture and ADR files |
+| 1A | Android foundation | single-module Android app builds, tests and lints through Makefile targets |
 | 1 | Minimal scanner | nearby scans normalized and displayed reliably |
 | 2 | Analyzer | band/channel views and filtering implemented |
 | 3 | History | observation persistence and signal history available |
