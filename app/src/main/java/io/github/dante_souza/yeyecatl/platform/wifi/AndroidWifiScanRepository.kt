@@ -1,0 +1,184 @@
+package io.github.dante_souza.yeyecatl.platform.wifi
+
+import android.annotation.SuppressLint
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.net.wifi.ScanResult
+import android.net.wifi.WifiManager
+import android.os.Build
+import androidx.core.content.ContextCompat
+import io.github.dante_souza.yeyecatl.domain.wifi.RawWifiScanObservation
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanBlockReason
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanFreshness
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanObservation
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanObservationMapper
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanRepository
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanResultSource
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanState
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanStateTransitions
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+
+class AndroidWifiScanRepository(
+    context: Context,
+    private val readinessProvider: WifiPlatformReadinessProvider
+) : WifiScanRepository {
+    private val appContext = context.applicationContext
+    private val wifiManager = appContext.getSystemService(WifiManager::class.java)
+    private val state = MutableStateFlow<WifiScanState>(WifiScanState.Idle)
+    private var receiverRegistered = false
+    private var requestInFlight = false
+
+    private val scanResultsReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == WifiManager.SCAN_RESULTS_AVAILABLE_ACTION) {
+                handleScanResultsAvailable(intent)
+            }
+        }
+    }
+
+    override fun observeScanState(): StateFlow<WifiScanState> = state
+
+    override fun start() {
+        if (receiverRegistered) {
+            return
+        }
+
+        ContextCompat.registerReceiver(
+            appContext,
+            scanResultsReceiver,
+            IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+        receiverRegistered = true
+    }
+
+    override fun stop() {
+        if (!receiverRegistered) {
+            return
+        }
+
+        runCatching {
+            appContext.unregisterReceiver(scanResultsReceiver)
+        }
+        receiverRegistered = false
+        requestInFlight = false
+    }
+
+    @SuppressLint("MissingPermission")
+    @Suppress("DEPRECATION")
+    override fun requestScan() {
+        start()
+
+        val readiness = readinessProvider.currentReadiness(
+            permissionRequestAttempted = false,
+            shouldShowPermissionRationale = false
+        )
+        val blockReason = WifiScanReadinessPolicy.blockReason(readiness)
+        if (blockReason != null) {
+            state.value = WifiScanStateTransitions.blocked(state.value, blockReason)
+            return
+        }
+
+        val manager = wifiManager
+        if (manager == null) {
+            state.value = WifiScanStateTransitions.blocked(
+                state.value,
+                WifiScanBlockReason.WifiHardwareUnavailable
+            )
+            return
+        }
+
+        state.value = WifiScanStateTransitions.request(state.value)
+
+        try {
+            val accepted = manager.startScan()
+            if (accepted) {
+                requestInFlight = true
+            } else {
+                requestInFlight = false
+                state.value = WifiScanStateTransitions.requestRejected(state.value)
+            }
+        } catch (_: SecurityException) {
+            requestInFlight = false
+            state.value = WifiScanStateTransitions.blocked(
+                state.value,
+                WifiScanBlockReason.PermissionUnavailable
+            )
+        } catch (_: RuntimeException) {
+            requestInFlight = false
+            state.value = WifiScanStateTransitions.error(
+                state.value,
+                "Android failed to request a Wi-Fi scan."
+            )
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun handleScanResultsAvailable(intent: Intent) {
+        val source = if (requestInFlight) {
+            WifiScanResultSource.ApplicationRequest
+        } else {
+            WifiScanResultSource.PassiveAvailability
+        }
+        requestInFlight = false
+
+        val resultsUpdated = if (intent.hasExtra(WifiManager.EXTRA_RESULTS_UPDATED)) {
+            intent.getBooleanExtra(WifiManager.EXTRA_RESULTS_UPDATED, false)
+        } else {
+            null
+        }
+        val freshness = when (resultsUpdated) {
+            true -> WifiScanFreshness.Fresh
+            false -> WifiScanFreshness.Cached
+            null -> WifiScanFreshness.Unknown
+        }
+
+        try {
+            val observations = wifiManager
+                ?.scanResults
+                .orEmpty()
+                .map(::mapScanResult)
+
+            state.value = WifiScanStateTransitions.resultsAvailable(
+                current = state.value,
+                observations = observations,
+                freshness = freshness,
+                source = source,
+                resultsUpdated = resultsUpdated,
+                receivedAtMillis = System.currentTimeMillis()
+            )
+        } catch (_: SecurityException) {
+            state.value = WifiScanStateTransitions.blocked(
+                state.value,
+                WifiScanBlockReason.PermissionUnavailable
+            )
+        } catch (_: RuntimeException) {
+            state.value = WifiScanStateTransitions.error(
+                state.value,
+                "Android failed to read Wi-Fi scan results."
+            )
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun mapScanResult(scanResult: ScanResult): WifiScanObservation =
+        WifiScanObservationMapper.fromRaw(
+            RawWifiScanObservation(
+                ssidDisplayText = scanResult.SSID,
+                ssidRawBytes = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    scanResult.wifiSsid?.bytes
+                } else {
+                    null
+                },
+                bssid = scanResult.BSSID,
+                rssiDbm = scanResult.level,
+                frequencyMhz = scanResult.frequency,
+                capabilities = scanResult.capabilities,
+                platformTimestampMicros = scanResult.timestamp
+            )
+        )
+
+}

@@ -18,6 +18,7 @@ lists `WifiManager.startScan()` and `WifiManager.getScanResults()` as requiring
 
 Phase 1 declares:
 
+- `ACCESS_COARSE_LOCATION`
 - `ACCESS_FINE_LOCATION`
 - `ACCESS_WIFI_STATE`
 - `CHANGE_WIFI_STATE`
@@ -34,6 +35,9 @@ separate precondition from permission grant state.
 ## Rationale
 
 - `ACCESS_FINE_LOCATION` is required for the selected target SDK and scan APIs.
+- `ACCESS_COARSE_LOCATION` is declared and requested with fine location for
+  Android 12+ permission UX/lint compatibility, but coarse alone is not
+  considered sufficient for scan readiness.
 - `ACCESS_WIFI_STATE` is required for valid scan results and state reads.
 - `CHANGE_WIFI_STATE` is required to request scans with `startScan()`.
 - `NEARBY_WIFI_DEVICES` is not a replacement for scan-result location

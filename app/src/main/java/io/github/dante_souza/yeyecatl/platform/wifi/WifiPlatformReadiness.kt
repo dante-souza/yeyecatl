@@ -18,6 +18,7 @@ enum class LocationServicesStatus {
 }
 
 enum class ScannerImplementationStatus {
+    Implemented,
     NotImplemented
 }
 
@@ -41,5 +42,5 @@ interface WifiPlatformReadinessProvider {
         shouldShowPermissionRationale: Boolean
     ): WifiPlatformReadiness
 
-    fun discoveryRuntimePermissionName(): String?
+    fun discoveryRuntimePermissionNames(): List<String>
 }

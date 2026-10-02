@@ -226,6 +226,11 @@ The Phase 0 observation and scan-state contracts are documented in:
 - `docs/architecture/wifi-observation-model.md`
 - `docs/architecture/scan-state-model.md`
 
+The Phase 1B/1C Android implementation boundaries are documented in:
+
+- `docs/architecture/android-wifi-platform-readiness.md`
+- `docs/architecture/android-wifi-scan-acquisition.md`
+
 This shared model will make it possible to compare Yeyecatl observations with Ehécatl captures later without forcing both applications to share implementation code.
 
 ---
@@ -367,6 +372,14 @@ Phase 0 outputs are recorded in `docs/research/`, `docs/architecture/`, and `doc
 - keep Android Wi-Fi and permission APIs under `platform/wifi`;
 - keep Wi-Fi scanning intentionally unimplemented.
 
+### Phase 1C — Wi-Fi Scan Acquisition
+
+- request a foreground Wi-Fi scan only after explicit user action;
+- receive Android scan-result availability broadcasts through a dynamic receiver;
+- map raw Android scan results into Android-independent observations;
+- preserve cached/previous observations when Android rejects a request or reports stale results;
+- keep RF/channel analysis, persistence and export intentionally unimplemented.
+
 ### Phase 1 — Minimal Scanner
 
 - create Android project;
@@ -486,7 +499,7 @@ Current artifacts:
 - Phase 0 observation model, scan-state model and ADRs accepted;
 - Phase 1A Android project foundation created;
 - Phase 1B Android Wi-Fi platform readiness created;
-- Wi-Fi scanning not yet implemented.
+- Phase 1C foreground Wi-Fi scan acquisition created.
 
 That separation is intentional: first define what the instrument should observe, then choose the exact implementation around the capabilities Android actually exposes.
 

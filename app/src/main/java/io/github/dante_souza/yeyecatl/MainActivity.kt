@@ -1,12 +1,14 @@
 package io.github.dante_souza.yeyecatl
 
 import android.os.Bundle
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import io.github.dante_souza.yeyecatl.platform.wifi.AndroidWifiScanRepository
 import io.github.dante_souza.yeyecatl.platform.wifi.AndroidWifiPlatformReadinessProvider
 import io.github.dante_souza.yeyecatl.platform.wifi.LocationServicesStatus
 import io.github.dante_souza.yeyecatl.platform.wifi.PermissionGrantState
@@ -22,12 +24,15 @@ class MainActivity : ComponentActivity() {
     private val wifiReadinessProvider by lazy {
         AndroidWifiPlatformReadinessProvider(this)
     }
+    private val wifiScanRepository by lazy {
+        AndroidWifiScanRepository(this, wifiReadinessProvider)
+    }
 
     private var permissionRequestAttempted by mutableStateOf(false)
     private var readiness by mutableStateOf(initialReadiness())
 
     private val discoveryPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
+        ActivityResultContracts.RequestMultiplePermissions()
     ) {
         permissionRequestAttempted = true
         refreshReadiness()
@@ -37,11 +42,19 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         refreshReadiness()
         setContent {
+            val scanState by wifiScanRepository.observeScanState().collectAsState()
             YeyecatlApp(
                 readiness = readiness,
+                scanState = scanState,
+                onRequestScan = ::requestScan,
                 onRequestDiscoveryPermission = ::requestDiscoveryPermission
             )
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        wifiScanRepository.start()
     }
 
     override fun onResume() {
@@ -49,18 +62,29 @@ class MainActivity : ComponentActivity() {
         refreshReadiness()
     }
 
-    private fun requestDiscoveryPermission() {
-        val permissionName = wifiReadinessProvider.discoveryRuntimePermissionName()
-            ?: return
+    override fun onStop() {
+        wifiScanRepository.stop()
+        super.onStop()
+    }
 
-        discoveryPermissionLauncher.launch(permissionName)
+    private fun requestDiscoveryPermission() {
+        val permissionNames = wifiReadinessProvider.discoveryRuntimePermissionNames()
+        if (permissionNames.isEmpty()) {
+            return
+        }
+
+        discoveryPermissionLauncher.launch(permissionNames.toTypedArray())
+    }
+
+    private fun requestScan() {
+        refreshReadiness()
+        wifiScanRepository.requestScan()
     }
 
     private fun refreshReadiness() {
-        val permissionName = wifiReadinessProvider.discoveryRuntimePermissionName()
-        val shouldShowPermissionRationale = permissionName?.let {
-            shouldShowRequestPermissionRationale(it)
-        } ?: false
+        val shouldShowPermissionRationale = wifiReadinessProvider
+            .discoveryRuntimePermissionNames()
+            .any(::shouldShowRequestPermissionRationale)
 
         readiness = wifiReadinessProvider.currentReadiness(
             permissionRequestAttempted = permissionRequestAttempted,

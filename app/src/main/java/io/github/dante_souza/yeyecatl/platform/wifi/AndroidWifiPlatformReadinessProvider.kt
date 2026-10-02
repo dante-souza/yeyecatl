@@ -28,15 +28,19 @@ class AndroidWifiPlatformReadinessProvider(
             hardware = wifiHardwareStatus(),
             wifiPower = wifiPowerStatus(),
             locationServices = locationServicesStatus(),
-            discoveryPermission = permissionStatus
+            discoveryPermission = permissionStatus,
+            scanner = ScannerImplementationStatus.Implemented
         )
     }
 
-    override fun discoveryRuntimePermissionName(): String? =
+    override fun discoveryRuntimePermissionNames(): List<String> =
         if (WifiDiscoveryPermissionPolicy.requirementFor(Build.VERSION.SDK_INT) == PermissionRequirement.Required) {
-            Manifest.permission.ACCESS_FINE_LOCATION
+            listOf(
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            )
         } else {
-            null
+            emptyList()
         }
 
     private fun wifiHardwareStatus(): WifiHardwareStatus =

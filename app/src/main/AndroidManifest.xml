@@ -2,10 +2,13 @@
     <!-- Lets the app inspect Wi-Fi state and platform capability without scanning. -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
+    <!-- Paired with fine location for Android 12+ permission UX; fine is still required for scans. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
     <!-- Required by Android scan-result APIs for future nearby Wi-Fi discovery. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
-    <!-- Required only when a later phase requests foreground scans with WifiManager.startScan(). -->
+    <!-- Required to request foreground Wi-Fi scans with WifiManager.startScan(). -->
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
 
     <!-- Yeyecatl can still open and explain unsupported state on devices without Wi-Fi. -->

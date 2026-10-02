@@ -11,6 +11,7 @@ Wi-Fi scanner. It is scoped to `minSdk = 29`, `targetSdk = 36`, and
 | Requirement | Manifest | Runtime request | Phase 1 decision | Reason |
 |---|---:|---:|---|---|
 | `ACCESS_FINE_LOCATION` | Yes | Yes | Required | `startScan()` and `getScanResults()` require fine location for apps targeting API 29+. |
+| `ACCESS_COARSE_LOCATION` | Yes | Yes, paired with fine | Companion declaration | Requested with fine location for Android 12+ permission UX/lint compatibility; coarse alone is not scan-ready. |
 | `ACCESS_WIFI_STATE` | Yes | No | Required | Required for reading scan results and Wi-Fi state/capability APIs. |
 | `CHANGE_WIFI_STATE` | Yes | No | Required if Yeyecatl calls `startScan()` | Required to initiate Wi-Fi scans. |
 | `NEARBY_WIFI_DEVICES` | No | No | Not part of Phase 1 scanner | Android docs state `startScan()` and `getScanResults()` still require `ACCESS_FINE_LOCATION`, even for target 33+. |
@@ -24,6 +25,7 @@ The future manifest should contain only the scanner permissions needed for the
 implemented feature:
 
 ```xml
+<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
@@ -39,7 +41,7 @@ feature that derives location-like meaning from Wi-Fi observations.
 |---|---|---|---|
 | API 26-27 | `getScanResults()` can succeed with one of fine location, coarse location, or `CHANGE_WIFI_STATE`. | Platform scan restrictions exist. | Not Phase 1 baseline. If supported later, isolate compatibility in Android adapter. |
 | API 28 | `startScan()` requires location permission, `CHANGE_WIFI_STATE`, and Location Services enabled. | Required. | Not Phase 1 baseline. |
-| API 29-32 | Apps targeting 29+ need `ACCESS_FINE_LOCATION` for `startScan()` and `getScanResults()`. | Required. | Phase 1 baseline path. |
+| API 29-32 | Apps targeting 29+ need `ACCESS_FINE_LOCATION` for `startScan()` and `getScanResults()`. Android 12+ permission UX expects coarse to be declared with fine. | Required. | Phase 1 baseline path. Treat fine location as required for scan readiness. |
 | API 33-36 | `NEARBY_WIFI_DEVICES` exists for nearby Wi-Fi APIs, but Android docs still list `startScan()` and `getScanResults()` as requiring `ACCESS_FINE_LOCATION`. | Required. | Keep fine location permission. Do not claim scan results are location-free. |
 | API 37+ | Android 17 adds local-network permission behavior for LAN traffic, not core scan-result retrieval. | Required for scan APIs unless Android changes this contract. | Future review before targeting API 37. |
 

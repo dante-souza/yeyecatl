@@ -1,10 +1,13 @@
 # Android Wi-Fi Platform Readiness
 
-Status: Accepted for Phase 1B
+Status: Accepted for Phase 1B; superseded in part by Phase 1C scanning
 
 Phase 1B establishes the Android boundary needed before Yeyecatl implements
 Wi-Fi discovery. It does not start scans, collect scan results, parse RF data, or
 persist observations.
+
+Phase 1C keeps this readiness boundary and adds actual foreground scan
+acquisition in `docs/architecture/android-wifi-scan-acquisition.md`.
 
 ## Implemented Scope
 
@@ -22,11 +25,12 @@ persist observations.
 |---|---|
 | `android.permission.ACCESS_WIFI_STATE` | Lets Yeyecatl inspect Wi-Fi availability and state without scanning. |
 | `android.permission.ACCESS_FINE_LOCATION` | Required by Android scan-result APIs for future nearby Wi-Fi discovery on the Phase 1 SDK baseline. |
+| `android.permission.ACCESS_COARSE_LOCATION` | Declared and requested with fine location for Android 12+ location-permission UX and lint compatibility. Coarse alone is not treated as sufficient for Wi-Fi scans. |
 | `android.permission.CHANGE_WIFI_STATE` | Required when a later phase asks `WifiManager.startScan()` to initiate foreground scans. Phase 1B does not call it. |
 | `android.hardware.wifi` with `required=false` | Allows the app to install and explain unsupported Wi-Fi state instead of being hidden from non-Wi-Fi devices. |
 
 Yeyecatl does not declare `NEARBY_WIFI_DEVICES`, `ACCESS_BACKGROUND_LOCATION`, or
-`INTERNET` in Phase 1B.
+`INTERNET` in Phase 1B/1C.
 
 ## API-Level Permission Model
 
@@ -79,7 +83,7 @@ Android does not expose a perfect permanent-denial flag. Yeyecatl classifies
 "requires app settings" only after a request was attempted and Android no longer
 shows rationale for the permission.
 
-## Deliberately Unimplemented
+## Deliberately Unimplemented In Phase 1B
 
 - `WifiManager.startScan()`;
 - scan-result collection;

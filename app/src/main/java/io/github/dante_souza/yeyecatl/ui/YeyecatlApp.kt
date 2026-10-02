@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -15,6 +17,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanBlockReason
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanFreshness
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanObservation
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanResultSource
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanSnapshot
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanState
 import io.github.dante_souza.yeyecatl.platform.wifi.LocationServicesStatus
 import io.github.dante_souza.yeyecatl.platform.wifi.PermissionGrantState
 import io.github.dante_souza.yeyecatl.platform.wifi.PermissionRequirement
@@ -28,6 +36,8 @@ import io.github.dante_souza.yeyecatl.platform.wifi.WifiPowerStatus
 @Composable
 fun YeyecatlApp(
     readiness: WifiPlatformReadiness = previewReadiness(),
+    scanState: WifiScanState = WifiScanState.Idle,
+    onRequestScan: () -> Unit = {},
     onRequestDiscoveryPermission: () -> Unit = {}
 ) {
     MaterialTheme {
@@ -37,6 +47,8 @@ fun YeyecatlApp(
         ) {
             YeyecatlReadinessScreen(
                 readiness = readiness,
+                scanState = scanState,
+                onRequestScan = onRequestScan,
                 onRequestDiscoveryPermission = onRequestDiscoveryPermission
             )
         }
@@ -46,12 +58,15 @@ fun YeyecatlApp(
 @Composable
 fun YeyecatlReadinessScreen(
     readiness: WifiPlatformReadiness,
+    scanState: WifiScanState,
+    onRequestScan: () -> Unit,
     onRequestDiscoveryPermission: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(24.dp),
         horizontalAlignment = Alignment.Start,
         verticalArrangement = Arrangement.Center
@@ -82,11 +97,48 @@ fun YeyecatlReadinessScreen(
             }
         }
 
+        Button(
+            onClick = onRequestScan,
+            enabled = readiness.isDiscoveryAllowed,
+            modifier = Modifier.padding(top = 16.dp)
+        ) {
+            Text("Scan Wi-Fi")
+        }
+
+        ReadinessRow("Scan state", scanState.label())
+        scanState.message()?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+        ScanResults(scanState.latestSnapshot)
+
         Text(
-            text = "Phase 1B: Wi-Fi scanning is intentionally not implemented yet.",
+            text = "Phase 1C: acquisition only. RF/channel analysis is intentionally not implemented yet.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 16.dp)
+        )
+    }
+}
+
+@Composable
+private fun ScanResults(snapshot: WifiScanSnapshot?) {
+    if (snapshot == null) {
+        ReadinessRow("Observed networks", "No scan results yet")
+        return
+    }
+
+    ReadinessRow("Observed networks", snapshot.observations.size.toString())
+    ReadinessRow("Freshness", snapshot.freshness.label())
+    snapshot.observations.forEach { observation ->
+        Text(
+            text = observation.rowText(),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(top = 8.dp)
         )
     }
 }
@@ -140,8 +192,55 @@ private fun WifiDiscoveryPermissionStatus.label(): String =
 
 private fun ScannerImplementationStatus.label(): String =
     when (this) {
+        ScannerImplementationStatus.Implemented -> "Implemented"
         ScannerImplementationStatus.NotImplemented -> "Not implemented"
     }
+
+private fun WifiScanState.label(): String =
+    when (this) {
+        WifiScanState.Idle -> "Idle"
+        is WifiScanState.ScanRequested -> "Scan requested"
+        is WifiScanState.Results -> "Results available"
+        is WifiScanState.RequestRejected -> "Request rejected"
+        is WifiScanState.Blocked -> reason.label()
+        is WifiScanState.Error -> "Error"
+    }
+
+private fun WifiScanState.message(): String? =
+    when (this) {
+        is WifiScanState.RequestRejected -> message
+        is WifiScanState.Error -> message
+        else -> null
+    }
+
+private fun WifiScanBlockReason.label(): String =
+    when (this) {
+        WifiScanBlockReason.WifiHardwareUnavailable -> "Wi-Fi hardware unavailable"
+        WifiScanBlockReason.WifiUnavailable -> "Wi-Fi unavailable"
+        WifiScanBlockReason.LocationServicesUnavailable -> "Location Services unavailable"
+        WifiScanBlockReason.PermissionUnavailable -> "Scan permission unavailable"
+    }
+
+private fun WifiScanFreshness.label(): String =
+    when (this) {
+        WifiScanFreshness.Fresh -> "Fresh"
+        WifiScanFreshness.Cached -> "Cached or previous"
+        WifiScanFreshness.Unknown -> "Unknown"
+    }
+
+private fun WifiScanObservation.rowText(): String {
+    val ssidText = ssid.displayText ?: if (ssid.isHidden) {
+        "<hidden>"
+    } else {
+        "<unavailable>"
+    }
+    return listOf(
+        ssidText,
+        bssid ?: "<no BSSID>",
+        rssiDbm?.toString() ?: "?",
+        frequencyMhz?.toString() ?: "?"
+    ).joinToString(separator = "  ")
+}
 
 private fun Boolean.yesNo(): String =
     if (this) {
@@ -162,8 +261,32 @@ private fun previewReadiness(): WifiPlatformReadiness =
         )
     )
 
+private fun previewScanState(): WifiScanState =
+    WifiScanState.Results(
+        WifiScanSnapshot(
+            observations = listOf(
+                WifiScanObservation(
+                    ssid = io.github.dante_souza.yeyecatl.domain.wifi.ObservedSsid(
+                        displayText = "whanganui",
+                        rawBytes = null,
+                        isHidden = false
+                    ),
+                    bssid = "xx:xx:xx:xx:xx:xx",
+                    rssiDbm = -42,
+                    frequencyMhz = 2412,
+                    capabilities = "[WPA2-PSK-CCMP][ESS]",
+                    platformTimestampMicros = 1234L
+                )
+            ),
+            freshness = WifiScanFreshness.Fresh,
+            source = WifiScanResultSource.ApplicationRequest,
+            resultsUpdated = true,
+            receivedAtMillis = 0L
+        )
+    )
+
 @Preview(showBackground = true)
 @Composable
 private fun YeyecatlPlaceholderPreview() {
-    YeyecatlApp()
+    YeyecatlApp(scanState = previewScanState())
 }
