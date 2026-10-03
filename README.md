@@ -402,6 +402,12 @@ Phase 0 outputs are recorded in `docs/research/`, `docs/architecture/`, and `doc
 - preserve 80+80 MHz as separate visual segments and 320 MHz as one contiguous span;
 - keep scoring, recommendations, automatic scanning and historical visualization intentionally unimplemented.
 
+### Phase 1H — Launcher Visual Identity
+
+- ship the Yeyecatl production adaptive launcher icon;
+- provide mask-safe foreground, background and themed monochrome layers;
+- keep splash-screen branding and further visual theming intentionally unimplemented.
+
 ### Phase 1 — Minimal Scanner
 
 - create Android project;
@@ -525,6 +531,7 @@ Current artifacts:
 - Phase 1D pure RF interpretation created.
 - Phase 1E nominal spectrum geometry created.
 - Phase 1F spectrum visualization created.
+- Phase 1H adaptive launcher visual identity created.
 
 That separation is intentional: first define what the instrument should observe, then choose the exact implementation around the capabilities Android actually exposes.
 

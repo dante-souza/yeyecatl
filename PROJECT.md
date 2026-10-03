@@ -221,11 +221,14 @@ Start simple. Split into Gradle modules only when build time, ownership, or depe
 | 1D | RF interpretation | raw observations interpreted into band, channel, width and Wi-Fi standard |
 | 1E | Spectrum geometry | nominal occupied spans and geometric overlap calculated without interference scoring |
 | 1F | Spectrum visualization | 2.4/5/6 GHz channel graph rendered from domain geometry without scoring |
+| 1H | Launcher visual identity | production adaptive launcher icon with Yeyecatl foreground, background and themed monochrome layers implemented |
 | 1 | Minimal scanner | nearby scans normalized and displayed reliably |
 | 2 | Analyzer | band/channel views and filtering implemented |
 | 3 | History | observation persistence and signal history available |
 | 4 | Field survey | snapshots, annotations and comparisons available |
 | 5 | Interop | versioned export compatible with Ehécatl concepts |
+
+**Phase 1H status:** complete. The production launcher identity uses mask-safe adaptive icon layers and supports Android 13 themed icons.
 
 ## 8. Definition of Done
 
