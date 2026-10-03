@@ -1,16 +1,11 @@
-<p align="center">
-  <img src="docs/assets/yeyecatl-logo.png" alt="Yeyecatl logo" width="420" />
-</p>
+![Yeyecatl](./docs/assets/branding/yeyecatl-brand-board.png)
 
-<h1 align="center">Yeyecatl</h1>
+# Yeyecatl
 
-<p align="center">
-  <strong>Android Wi-Fi cartography and wireless observation for Tlalli.</strong>
-</p>
+**Android Wi-Fi cartography and wireless observation for Tlalli.**
 
-<p align="center">
-  A mobile sibling of <strong>Ehécatl</strong>, designed to observe, map, inspect and understand the Wi-Fi environment directly from Android devices.
-</p>
+A mobile sibling of **Ehécatl**, designed to observe, map, inspect and understand
+the Wi-Fi environment directly from Android devices.
 
 ---
 
