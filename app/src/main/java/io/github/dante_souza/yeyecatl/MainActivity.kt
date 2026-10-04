@@ -8,6 +8,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import io.github.dante_souza.yeyecatl.platform.wifi.AndroidWifiScanRepository
 import io.github.dante_souza.yeyecatl.platform.wifi.AndroidWifiPlatformReadinessProvider
 import io.github.dante_souza.yeyecatl.platform.wifi.LocationServicesStatus
@@ -39,6 +40,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         refreshReadiness()
         setContent {
