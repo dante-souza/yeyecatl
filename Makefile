@@ -1,5 +1,11 @@
 SHELL := /bin/sh
+
+ifeq ($(OS),Windows_NT)
 GRADLE ?= ./gradlew.bat
+else
+GRADLE ?= sh ./gradlew
+endif
+
 ADB ?= adb
 APP_ID := io.github.dante_souza.yeyecatl
 
