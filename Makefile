@@ -72,9 +72,9 @@ android-test:
 android-test-build:
 	@$(GRADLE) :app:assembleDebugAndroidTest
 
-android-test-install: assemble-debug android-test-build
-	@$(ADB) install -r app/build/outputs/apk/debug/app-debug.apk
-	@$(ADB) install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+android-test-install: install-debug android-test-build
+	@printf '%s\n' 'Installing instrumentation APK with non-streaming ADB mode...'
+	@$(ADB) install --no-streaming -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 
 android-test-diagnostics: android-test-install
 	@printf '%s\n' '=== Installed APK paths ==='
