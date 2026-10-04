@@ -1,0 +1,93 @@
+name: Archive Phase 1I visual freeze
+
+on:
+  push:
+    branches:
+      - feature/phase-1i-app-shell
+    paths:
+      - ".github/workflows/archive-phase-1i-visual.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  archive:
+    name: Build and publish visual freeze
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    env:
+      FREEZE_SHA: 82e63077622c300e8a5647f6e8273c70e447551c
+      RELEASE_TAG: v0.1.0-phase1i-visual.1
+      APK_NAME: yeyecatl-v0.1.0-phase1i-visual.1-debug.apk
+
+    steps:
+      - name: Check out frozen visual state
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ env.FREEZE_SHA }}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6.0.1
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Build frozen APK
+        run: make build
+
+      - name: Prepare archaeological assets
+        shell: bash
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk "$APK_NAME"
+          sha256sum "$APK_NAME" > SHA256SUMS.txt
+
+          cat > RELEASE_NOTES.md <<'EOF'
+          # Yeyecatl — Phase 1I Visual Freeze
+
+          Archaeological prerelease preserving the accepted Yeyecatl visual identity.
+
+          ## Frozen state
+
+          - Source commit: `82e63077622c300e8a5647f6e8273c70e447551c`
+          - App version: `0.1.0`
+          - Visual identity accepted on physical Samsung Galaxy J8 / Android 10
+          - New Yeyecatl wind-emblem adaptive launcher icon
+          - Matching branded splash identity
+          - Branded Compose application shell
+          - Yeyecatl light/dark palette and header identity
+          - Existing Wi-Fi/RF visualization preserved
+
+          ## Validation status at freeze
+
+          - Host build/CI: buildable
+          - Physical APK install/launch on Galaxy J8: accepted
+          - Visual acceptance: accepted
+          - Instrumentation-test harness: still under investigation at this historical point
+
+          This release is intentionally marked as a prerelease. It is a preservation point for software archaeology, not the final Phase 1I acceptance release.
+
+          ## Assets
+
+          - `yeyecatl-v0.1.0-phase1i-visual.1-debug.apk` — frozen debug APK
+          - `SHA256SUMS.txt` — SHA-256 checksum for the APK
+          EOF
+
+      - name: Publish archaeological prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; replacing archival assets."
+            gh release upload "$RELEASE_TAG" "$APK_NAME" SHA256SUMS.txt --clobber
+          else
+            gh release create "$RELEASE_TAG" \
+              "$APK_NAME" \
+              SHA256SUMS.txt \
+              --target "$FREEZE_SHA" \
+              --title "Phase 1I Visual Freeze — Yeyecatl identity" \
+              --notes-file RELEASE_NOTES.md \
+              --prerelease
+          fi
