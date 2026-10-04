@@ -27,9 +27,9 @@ class YeyecatlAppTest {
     val composeRule = createEmptyComposeRule()
 
     @Test
-    fun appShellIdentifiesFieldAnalyzer() = withTestContent {
-        YeyecatlApp()
-    } assertions@{
+    fun appShellIdentifiesFieldAnalyzer() = withTestContent(
+        content = { YeyecatlApp() }
+    ) {
         composeRule.onNodeWithText("Yeyecatl").assertIsDisplayed()
         composeRule.onNodeWithText("Wi-Fi field analyzer").assertIsDisplayed()
         composeRule.onNodeWithText("Scanner").assertIsDisplayed()
@@ -38,9 +38,9 @@ class YeyecatlAppTest {
     }
 
     @Test
-    fun spectrumBandSelectorHandlesEmptyState() = withTestContent {
-        YeyecatlApp(scanState = resultsState(emptyList()))
-    } assertions@{
+    fun spectrumBandSelectorHandlesEmptyState() = withTestContent(
+        content = { YeyecatlApp(scanState = resultsState(emptyList())) }
+    ) {
         composeRule.onNodeWithText("2.4 GHz").assertIsDisplayed()
         composeRule.onNodeWithText("5 GHz").assertIsDisplayed()
         composeRule.onNodeWithText("6 GHz").assertIsDisplayed()
@@ -53,9 +53,9 @@ class YeyecatlAppTest {
     }
 
     @Test
-    fun diagnosticListRemainsAvailableWithSyntheticObservation() = withTestContent {
-        YeyecatlApp(scanState = resultsState(listOf(observation())))
-    } assertions@{
+    fun diagnosticListRemainsAvailableWithSyntheticObservation() = withTestContent(
+        content = { YeyecatlApp(scanState = resultsState(listOf(observation()))) }
+    ) {
         composeRule.onNodeWithText("Observed networks").assertIsDisplayed()
         composeRule.onNodeWithText("Freshness").assertIsDisplayed()
         composeRule.onNodeWithText("SSID: whanganui", substring = true).assertIsDisplayed()
