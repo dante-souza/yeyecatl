@@ -1,5 +1,6 @@
 package io.github.dante_souza.yeyecatl
 
+import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -14,6 +15,7 @@ import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanState
 import io.github.dante_souza.yeyecatl.ui.YeyecatlApp
 import org.junit.Test
 
+@OptIn(ExperimentalTestApi::class)
 class YeyecatlAppTest {
     @Test
     fun appShellIdentifiesFieldAnalyzer() = runComposeUiTest {
