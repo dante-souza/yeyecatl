@@ -99,7 +99,7 @@ private fun YeyecatlTopBar() {
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Image(
-                painter = painterResource(R.drawable.ic_launcher_foreground),
+                painter = painterResource(R.drawable.yeyecatl_launcher_icon),
                 contentDescription = null,
                 modifier = Modifier.size(44.dp)
             )

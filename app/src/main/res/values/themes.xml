@@ -12,7 +12,7 @@
 
     <style name="Theme.Yeyecatl.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/yeyecatl_splash_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_artwork</item>
         <item name="postSplashScreenTheme">@style/Theme.Yeyecatl</item>
     </style>
 </resources>
