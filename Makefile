@@ -10,7 +10,7 @@ ADB ?= adb
 APP_ID := io.github.dante_souza.yeyecatl
 TEST_APP_ID := $(APP_ID).test
 
-.PHONY: help setup build assemble-debug test unit-test android-test android-test-build android-test-diagnostics lint check clean install-debug adb-devices device-info device-smoke logcat app-logcat device-diagnostics agents-list skills-list agents-check
+.PHONY: help setup build assemble-debug test unit-test android-test android-test-build android-test-install android-test-diagnostics lint check clean install-debug adb-devices device-info device-smoke logcat app-logcat device-diagnostics agents-list skills-list agents-check
 
 help:
 	@printf '%s\n' \
@@ -23,6 +23,7 @@ help:
 	  '  make unit-test     Run JVM unit tests' \
 	  '  make android-test  Run connected Android tests' \
 	  '  make android-test-build Compile the instrumentation test APK' \
+	  '  make android-test-install Install app + instrumentation APKs without running tests' \
 	  '  make android-test-diagnostics Inspect installed instrumentation/Compose test host' \
 	  '  make lint          Run Android lint' \
 	  '  make check         Run build, tests, lint and agent validation' \
@@ -71,7 +72,11 @@ android-test:
 android-test-build:
 	@$(GRADLE) :app:assembleDebugAndroidTest
 
-android-test-diagnostics:
+android-test-install: assemble-debug android-test-build
+	@$(ADB) install -r app/build/outputs/apk/debug/app-debug.apk
+	@$(ADB) install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+
+android-test-diagnostics: android-test-install
 	@printf '%s\n' '=== Installed APK paths ==='
 	@$(ADB) shell pm path $(APP_ID) || true
 	@$(ADB) shell pm path $(TEST_APP_ID) || true
@@ -83,7 +88,9 @@ android-test-diagnostics:
 	@$(ADB) shell dumpsys package $(APP_ID) | grep -E 'androidx\.activity\.ComponentActivity|MainActivity' || true
 	@printf '%s\n' '' '=== Generated merged manifests ==='
 	@$(GRADLE) :app:processDebugMainManifest :app:processDebugAndroidTestManifest >/dev/null
-	@find app/build/intermediates -type f -name 'AndroidManifest.xml' -print | sort
+	@for manifest in app/build/intermediates/*/debug/*/AndroidManifest.xml; do \
+	  if [ -f "$manifest" ]; then printf '%s\n' "$manifest"; fi; \
+	done
 	@printf '%s\n' '' '=== Host/instrumentation declarations in generated manifests ==='
 	@grep -R -n -E 'androidx\.activity\.ComponentActivity|<instrumentation|AndroidJUnitRunner' app/build/intermediates/*/debug 2>/dev/null || true
 
