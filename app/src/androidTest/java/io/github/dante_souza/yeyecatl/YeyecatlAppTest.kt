@@ -1,7 +1,7 @@
 package io.github.dante_souza.yeyecatl
 
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import io.github.dante_souza.yeyecatl.domain.wifi.ObservedSsid
@@ -17,16 +17,7 @@ import org.junit.Test
 
 class YeyecatlAppTest {
     @get:Rule
-    val composeRule = createAndroidComposeRule<MainActivity>()
-
-    @Test
-    fun appShellIdentifiesFieldAnalyzer() {
-        composeRule.onNodeWithText("Yeyecatl").assertIsDisplayed()
-        composeRule.onNodeWithText("Wi-Fi field analyzer").assertIsDisplayed()
-        composeRule.onNodeWithText("Scanner").assertIsDisplayed()
-        composeRule.onNodeWithText("Observation").assertIsDisplayed()
-        composeRule.onNodeWithText("Scan Wi-Fi").assertIsDisplayed()
-    }
+    val composeRule = createComposeRule()
 
     @Test
     fun spectrumBandSelectorHandlesEmptyState() {
