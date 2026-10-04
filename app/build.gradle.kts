@@ -46,6 +46,7 @@ dependencies {
     implementation(libs.core.ktx)
     implementation(libs.core.splashscreen)
 
+    debugImplementation(libs.compose.ui.test.manifest)
     debugImplementation(libs.compose.ui.tooling)
 
     testImplementation(libs.junit)
