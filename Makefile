@@ -9,7 +9,7 @@ endif
 ADB ?= adb
 APP_ID := io.github.dante_souza.yeyecatl
 
-.PHONY: help setup build assemble-debug test unit-test android-test lint check clean install-debug adb-devices device-info device-smoke logcat app-logcat device-diagnostics agents-list skills-list agents-check
+.PHONY: help setup build assemble-debug test unit-test android-test android-test-build lint check clean install-debug adb-devices device-info device-smoke logcat app-logcat device-diagnostics agents-list skills-list agents-check
 
 help:
 	@printf '%s\n' \
@@ -21,6 +21,7 @@ help:
 	  '  make test          Run JVM unit tests' \
 	  '  make unit-test     Run JVM unit tests' \
 	  '  make android-test  Run connected Android tests' \
+	  '  make android-test-build Compile the instrumentation test APK' \
 	  '  make lint          Run Android lint' \
 	  '  make check         Run build, tests, lint and agent validation' \
 	  '  make clean         Remove Gradle build outputs' \
@@ -65,10 +66,13 @@ unit-test:
 android-test:
 	@$(GRADLE) :app:connectedDebugAndroidTest
 
+android-test-build:
+	@$(GRADLE) :app:assembleDebugAndroidTest
+
 lint:
 	@$(GRADLE) :app:lintDebug
 
-check: build unit-test lint agents-check
+check: build unit-test android-test-build lint agents-check
 
 clean:
 	@$(GRADLE) clean

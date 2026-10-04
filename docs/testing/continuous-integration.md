@@ -17,6 +17,7 @@ make check
 
 - debug APK assembly
 - JVM unit tests
+- instrumentation test APK compilation (tests are not executed in CI)
 - Android lint
 - agent/skill validation
 
@@ -26,7 +27,7 @@ GitHub Actions must use the Makefile entry points rather than duplicating Gradle
 
 A feature is not considered complete solely because CI passes when it changes Android framework integration, UI behavior, Wi-Fi scanning, permissions, or RF-related behavior.
 
-After CI is green, the completed feature branch is pulled to the local Android lab and validated on the Samsung Galaxy J8.
+After CI is green, the completed feature branch is pulled to the local Android lab and validated on the Samsung Galaxy J8. CI compiles the instrumentation tests, but connected execution remains a physical-device acceptance gate.
 
 Typical commands include:
 

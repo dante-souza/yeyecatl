@@ -20,8 +20,11 @@ class YeyecatlAppTest {
     val composeRule = createAndroidComposeRule<MainActivity>()
 
     @Test
-    fun placeholderIdentifiesApplication() {
+    fun appShellIdentifiesFieldAnalyzer() {
         composeRule.onNodeWithText("Yeyecatl").assertIsDisplayed()
+        composeRule.onNodeWithText("Wi-Fi field analyzer").assertIsDisplayed()
+        composeRule.onNodeWithText("Scanner").assertIsDisplayed()
+        composeRule.onNodeWithText("Observation").assertIsDisplayed()
         composeRule.onNodeWithText("Scan Wi-Fi").assertIsDisplayed()
     }
 
