@@ -3,11 +3,13 @@ package io.github.dante_souza.yeyecatl
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import io.github.dante_souza.yeyecatl.platform.wifi.AndroidWifiScanRepository
 import io.github.dante_souza.yeyecatl.platform.wifi.AndroidWifiPlatformReadinessProvider
 import io.github.dante_souza.yeyecatl.platform.wifi.LocationServicesStatus
@@ -39,7 +41,9 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         refreshReadiness()
         setContent {
             val scanState by wifiScanRepository.observeScanState().collectAsState()
