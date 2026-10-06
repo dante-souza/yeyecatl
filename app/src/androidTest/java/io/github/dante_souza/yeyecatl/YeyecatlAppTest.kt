@@ -154,6 +154,49 @@ class YeyecatlAppTest {
     }
 
     @Test
+    fun signalHistoryFollowsCurrentSignalScope() = runComposeUiTest {
+        val observations = (1..7).map { index ->
+            observation(
+                ssid = "network-$index",
+                bssid = "00:00:00:00:00:${index.toString().padStart(2, '0')}",
+                rssiDbm = -30 - index
+            )
+        }
+        val history = WifiTemporalObservationHistory(
+            samplesByBssid = observations.associate { observation ->
+                val bssid = requireNotNull(observation.bssid)
+                bssid to listOf(
+                    WifiSignalSample(
+                        bssid = bssid,
+                        ssid = observation.ssid,
+                        rssiDbm = requireNotNull(observation.rssiDbm),
+                        frequencyMhz = observation.frequencyMhz,
+                        observedAtMillis = 1_000L
+                    )
+                )
+            }
+        )
+
+        setContent {
+            YeyecatlApp(
+                scanState = resultsState(observations),
+                temporalHistory = history
+            )
+        }
+
+        onNodeWithText("Signal history").assertIsDisplayed()
+        onNodeWithContentDescription(
+            "2.4 GHz signal history chart with 7 BSSID series and 7 samples"
+        ).assertIsDisplayed()
+
+        onNodeWithText("Strongest 5").performClick()
+
+        onNodeWithContentDescription(
+            "2.4 GHz signal history chart with 5 BSSID series and 5 samples"
+        ).assertIsDisplayed()
+    }
+
+    @Test
     fun staticSignalRankingIsShownForLatestSnapshot() = runComposeUiTest {
         setContent {
             YeyecatlApp(
