@@ -56,6 +56,7 @@ import io.github.dante_souza.yeyecatl.platform.wifi.WifiDiscoveryPermissionStatu
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiHardwareStatus
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiPlatformReadiness
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiPowerStatus
+import io.github.dante_souza.yeyecatl.ui.history.WifiSignalHistoryChart
 import io.github.dante_souza.yeyecatl.ui.signal.WifiSignalRankingCard
 import io.github.dante_souza.yeyecatl.ui.spectrum.WifiSpectrumChart
 import io.github.dante_souza.yeyecatl.ui.theme.YeyecatlTheme
@@ -239,7 +240,10 @@ fun YeyecatlReadinessScreen(
                 modifier = Modifier.padding(top = 8.dp)
             )
         }
-        ScanResults(scanState.latestSnapshot)
+        ScanResults(
+            snapshot = scanState.latestSnapshot,
+            temporalHistory = temporalHistory
+        )
 
         Text(
             text = "Spectrum geometry is observational; interference scoring is not enabled.",
@@ -251,7 +255,10 @@ fun YeyecatlReadinessScreen(
 }
 
 @Composable
-private fun ScanResults(snapshot: WifiScanSnapshot?) {
+private fun ScanResults(
+    snapshot: WifiScanSnapshot?,
+    temporalHistory: WifiTemporalObservationHistory
+) {
     if (snapshot == null) {
         ReadinessRow("Observed networks", "No scan results yet")
         return
@@ -279,6 +286,25 @@ private fun ScanResults(snapshot: WifiScanSnapshot?) {
         observations = spectrumObservations,
         band = selectedBand,
         modifier = Modifier.padding(top = 16.dp)
+    )
+
+    Text(
+        text = "Signal history",
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.padding(top = 24.dp)
+    )
+    Text(
+        text = "History follows the selected band and All / Strongest 5 / Weakest 5 filter.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 4.dp)
+    )
+    WifiSignalHistoryChart(
+        history = temporalHistory,
+        observations = spectrumObservations,
+        band = selectedBand,
+        modifier = Modifier.padding(top = 8.dp)
     )
 
     WifiSignalRankingCard(
@@ -381,17 +407,18 @@ private fun spectrumObservations(
     band: WifiBand,
     scope: WifiSignalScope
 ): List<WifiScanObservation> {
-    if (scope == WifiSignalScope.All) {
-        return observations
-    }
-
     val observationsInBand = observations.filter {
         WifiRfInterpreter.interpret(it).band == band
     }
-    return WifiSignalRanker.select(
-        observations = observationsInBand,
-        scope = scope
-    )
+
+    return if (scope == WifiSignalScope.All) {
+        observationsInBand
+    } else {
+        WifiSignalRanker.select(
+            observations = observationsInBand,
+            scope = scope
+        )
+    }
 }
 
 private fun WifiSignalScope.label(): String =
