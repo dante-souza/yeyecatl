@@ -83,3 +83,37 @@ PASS for:
 
 Phase 2A.3 may build signal-over-time visualization on the now physically
 validated temporal acquisition path.
+
+
+## Phase 2A.3 — Signal History Visualization
+
+Status: physically validated on the Samsung Galaxy J8.
+
+The supplied device screenshots demonstrate:
+
+- the spectrum view and signal-history view rendered together;
+- multiple retained BSSID RSSI series across several minutes;
+- real relative-time axis labels;
+- `Strongest 5` applied to both the spectrum and temporal chart;
+- distinct temporal traces continuing to update under dynamic scanning.
+
+The first device rendering also exposed a readability defect: SSID labels drawn
+at the right edge of multiple converging traces overlapped. Phase 2A.3a moves
+those labels into a compact legend below focused views and leaves crowded
+`All` mode unlabeled.
+
+Evidence images are archived beside this report.
+
+### Phase 2A exit result
+
+PASS for the temporal pipeline itself:
+
+- fresh-only temporal accumulation;
+- bounded per-BSSID history;
+- repeated foreground cadence;
+- Android rejection/cached-result honesty;
+- RSSI-over-time visualization;
+- Phase 2-zero band/signal-scope integration;
+- physical operation on Galaxy J8.
+
+Phase 2A is closed after the readability refinement passes repository CI.
