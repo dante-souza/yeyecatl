@@ -240,7 +240,7 @@ class YeyecatlAppTest {
         ).assertIsDisplayed()
 
         onNodeWithText("All bands").performClick()
-        onNodeWithText("Filter SSID or BSSID").performTextInput("bravo")
+        onNodeWithContentDescription("Nearby network text filter").performTextInput("bravo")
         onNodeWithText("Showing 1 of 3").assertIsDisplayed()
 
         onNodeWithText("Signal strongest").assertIsDisplayed()
