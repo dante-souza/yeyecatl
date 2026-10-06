@@ -46,6 +46,7 @@ import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumCompleteness
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumGeometry
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumSegment
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiTemporalObservationHistory
 import io.github.dante_souza.yeyecatl.platform.wifi.LocationServicesStatus
 import io.github.dante_souza.yeyecatl.platform.wifi.PermissionGrantState
 import io.github.dante_souza.yeyecatl.platform.wifi.PermissionRequirement
@@ -63,7 +64,10 @@ import io.github.dante_souza.yeyecatl.ui.theme.YeyecatlTheme
 fun YeyecatlApp(
     readiness: WifiPlatformReadiness = previewReadiness(),
     scanState: WifiScanState = WifiScanState.Idle,
+    temporalHistory: WifiTemporalObservationHistory = WifiTemporalObservationHistory(),
+    dynamicScanEnabled: Boolean = false,
     onRequestScan: () -> Unit = {},
+    onToggleDynamicScan: () -> Unit = {},
     onRequestDiscoveryPermission: () -> Unit = {}
 ) {
     YeyecatlTheme {
@@ -80,7 +84,10 @@ fun YeyecatlApp(
                 YeyecatlReadinessScreen(
                     readiness = readiness,
                     scanState = scanState,
+                    temporalHistory = temporalHistory,
+                    dynamicScanEnabled = dynamicScanEnabled,
                     onRequestScan = onRequestScan,
+                    onToggleDynamicScan = onToggleDynamicScan,
                     onRequestDiscoveryPermission = onRequestDiscoveryPermission
                 )
             }
@@ -127,7 +134,10 @@ private fun YeyecatlTopBar() {
 fun YeyecatlReadinessScreen(
     readiness: WifiPlatformReadiness,
     scanState: WifiScanState,
+    temporalHistory: WifiTemporalObservationHistory,
+    dynamicScanEnabled: Boolean,
     onRequestScan: () -> Unit,
+    onToggleDynamicScan: () -> Unit,
     onRequestDiscoveryPermission: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -181,12 +191,31 @@ fun YeyecatlReadinessScreen(
 
         Button(
             onClick = onRequestScan,
-            enabled = readiness.isDiscoveryAllowed,
+            enabled = readiness.isDiscoveryAllowed && !dynamicScanEnabled,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 12.dp)
         ) {
             Text("Scan Wi-Fi")
+        }
+
+        OutlinedButton(
+            onClick = onToggleDynamicScan,
+            enabled = readiness.isDiscoveryAllowed,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+        ) {
+            Text(if (dynamicScanEnabled) "Stop dynamic scan" else "Start dynamic scan")
+        }
+
+        if (dynamicScanEnabled) {
+            Text(
+                text = "Foreground cadence: every 30 seconds. Android may reject individual scan requests.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp)
+            )
         }
 
         Text(
@@ -196,6 +225,12 @@ fun YeyecatlReadinessScreen(
             modifier = Modifier.padding(top = 28.dp)
         )
         ReadinessRow("Scan state", scanState.label())
+        ReadinessRow("Dynamic scan", if (dynamicScanEnabled) "Running" else "Stopped")
+        ReadinessRow("Tracked BSSIDs", temporalHistory.samplesByBssid.size.toString())
+        ReadinessRow(
+            "Signal samples",
+            temporalHistory.samplesByBssid.values.sumOf { it.size }.toString()
+        )
         scanState.message()?.let {
             Text(
                 text = it,
