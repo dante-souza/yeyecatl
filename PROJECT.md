@@ -250,6 +250,8 @@ Start simple. Split into Gradle modules only when build time, ownership, or depe
 
 **Phase 2A.3 status:** signal-over-time visualization physically validated on the Samsung Galaxy J8. The history chart follows the selected band and frozen `All / Strongest 5 / Weakest 5` latest-snapshot scope, draws retained BSSID RSSI samples over their real observation times, and introduces no smoothing, interpolation or persistence. A final readability refinement moves focused-series labels into a compact legend so traces remain readable on-device.
 
+**Phase 2B status:** current-snapshot filtering and sorting implemented on the feature branch. The nearby-network list supports independent band filtering, case-insensitive SSID/BSSID text filtering, and explicit scan-order / strongest / weakest / SSID / channel sorting while preserving the underlying snapshot and Phase 2A temporal history. Physical Galaxy J8 validation remains pending.
+
 ## 8. Definition of Done
 
 A feature is done only when:
