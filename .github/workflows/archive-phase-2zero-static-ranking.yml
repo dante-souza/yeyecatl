@@ -1,0 +1,106 @@
+name: Archive Phase 2-zero static ranking
+
+on:
+  push:
+    branches:
+      - feature/phase-2zero-static-signal-ranking
+    paths:
+      - ".github/workflows/archive-phase-2zero-static-ranking.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  archive:
+    name: Build and publish Phase 2-zero freeze
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    env:
+      FREEZE_SHA: 9954e5b52ecf099ec9d81ad0cdf449bf62af5d32
+      RELEASE_TAG: v0.1.0-phase2zero-static.1
+      APK_NAME: yeyecatl-v0.1.0-phase2zero-static.1-debug.apk
+      EVIDENCE_NAME: yeyecatl-phase-2zero-j8-ranking.jpg
+
+    steps:
+      - name: Check out frozen Phase 2-zero state
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ env.FREEZE_SHA }}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6.0.1
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Build frozen APK
+        run: make build
+
+      - name: Prepare archaeological assets
+        shell: bash
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk "$APK_NAME"
+          cp docs/validation/phase-2zero/yeyecatl-phase-2zero-j8-ranking.jpg "$EVIDENCE_NAME"
+          sha256sum "$APK_NAME" "$EVIDENCE_NAME" > SHA256SUMS.txt
+
+          cat > RELEASE_NOTES.md <<'EOF'
+          # Yeyecatl — Phase 2-zero Static Ranking Freeze
+
+          Archaeological prerelease preserving the accepted Phase 2-zero static signal-ranking milestone.
+
+          ## Frozen state
+
+          - Source commit: `9954e5b52ecf099ec9d81ad0cdf449bf62af5d32`
+          - Phase: **2-zero — Static Signal Ranking**
+          - Physical validation: **PASS**
+          - Validation device: Samsung Galaxy J8 / SM-J810M / Android 10
+          - Host repository checks: **PASS**
+          - GitHub Actions CI: **PASS**
+
+          ## Preserved behavior
+
+          - latest Wi-Fi scan snapshot ranked by RSSI
+          - up to five strongest BSSID observations
+          - up to five weakest BSSID observations
+          - duplicate SSIDs remain distinct by BSSID
+          - observations without RSSI are excluded from ranked scopes
+          - mutually exclusive spectrum modes: `All / Strongest 5 / Weakest 5`
+          - strongest/weakest plot filtering is scoped to the selected Wi-Fi band
+          - complete snapshot, observed-network count and diagnostics remain intact
+          - no repeated scanning, history, moving averages, persistence or temporal Phase 2A semantics
+
+          ## Physical-device evidence
+
+          The archived Galaxy J8 validation capture shows the static strongest/weakest ranking card operating on a real scan containing 71 observed networks.
+
+          The photograph predates the final spectrum-selector addition. The selector was subsequently tested and accepted on the same physical-device validation path; the validation record in `docs/validation/phase-2zero/README.md` preserves that distinction.
+
+          ## Assets
+
+          - `yeyecatl-v0.1.0-phase2zero-static.1-debug.apk` — frozen debug APK
+          - `yeyecatl-phase-2zero-j8-ranking.jpg` — reduced archival physical-device evidence
+          - `SHA256SUMS.txt` — SHA-256 checksums for release assets
+
+          This is an archaeological prerelease and preservation point, not a claim that Phase 2A temporal observation has started.
+          EOF
+
+      - name: Publish archaeological prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; replacing archival assets."
+            gh release upload "$RELEASE_TAG" "$APK_NAME" "$EVIDENCE_NAME" SHA256SUMS.txt --clobber
+          else
+            gh release create "$RELEASE_TAG" \
+              "$APK_NAME" \
+              "$EVIDENCE_NAME" \
+              SHA256SUMS.txt \
+              --target "$FREEZE_SHA" \
+              --title "Phase 2-zero Static Ranking Freeze — strongest/weakest spectrum filtering" \
+              --notes-file RELEASE_NOTES.md \
+              --prerelease
+          fi
