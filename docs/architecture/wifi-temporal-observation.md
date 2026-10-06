@@ -1,6 +1,6 @@
 # Wi-Fi Temporal Observation
 
-Status: Phase 2A.1 baseline
+Status: Phase 2A.2 foreground cadence baseline
 
 Phase 2A introduces time as a domain dimension without changing the frozen
 Phase 2-zero ranking semantics.
@@ -74,6 +74,10 @@ data class WifiTemporalObservationHistory(
 The history is immutable from the caller's perspective. The accumulator returns
 a new history when fresh measurable samples are appended.
 
+Each BSSID series retains at most 120 samples by default. This prevents a
+foreground dynamic-scan session from growing each signal series without bound.
+The limit is a memory-safety bound, not persistence and not a smoothing window.
+
 ## Phase 2A.1 Non-Goals
 
 This block intentionally does not add:
@@ -102,3 +106,107 @@ The first temporal block must prove that:
 - missing BSSID or RSSI is excluded;
 - cached snapshots do not fabricate history;
 - unknown-freshness snapshots do not fabricate history.
+
+
+## Phase 2A.2 Foreground Dynamic Scan Cadence
+
+Phase 2A.2 adds an explicit user-controlled repeated scan mode.
+
+The cadence controller is platform-neutral and owns only scheduling semantics.
+The Android implementation supplies a main-thread delayed scheduler. The
+existing `AndroidWifiScanRepository` remains responsible for one scan request
+and one scan-result acquisition at a time.
+
+```text
+Start dynamic scan
+       |
+       v
+WifiForegroundScanCadence
+       |
+       | every 30 seconds while foreground
+       v
+WifiScanRepository.requestScan()
+       |
+       v
+Android WifiManager
+       |
+       v
+fresh/cached/unknown result semantics
+       |
+       +--> latest snapshot
+       |
+       +--> fresh-only temporal history
+```
+
+### Foreground Lifecycle
+
+Dynamic mode is opt-in. It does not start automatically.
+
+When enabled:
+
+- entering the Activity foreground triggers an immediate scan request;
+- the next request is scheduled 30 seconds later;
+- leaving the foreground cancels the pending scheduled request;
+- the enabled preference remains in memory while the Activity instance exists;
+- re-entering the foreground resumes with an immediate request;
+- disabling dynamic mode cancels the pending request.
+
+No background service, foreground service, WorkManager job, alarm, or hidden
+polling loop is introduced.
+
+### Android Throttling
+
+Android documents a foreground limit of four `WifiManager.startScan()`
+requests per two-minute period on Android 9, with the same limit applying to
+Android 10 and later.
+
+Reference:
+
+- https://developer.android.com/develop/connectivity/wifi/wifi-scan
+
+The Phase 2A cadence therefore uses a 30-second default interval and still
+treats `startScan() == false` as an ordinary rejected request. Yeyecatl does not
+retry aggressively, disable throttling, or attempt to bypass platform limits.
+
+The platform may still reject individual requests. Other platform conditions
+can also change between scheduled requests, so every request continues through
+the existing readiness and rejection state model.
+
+### UI Contract
+
+The scanner screen exposes:
+
+- `Start dynamic scan` / `Stop dynamic scan`;
+- dynamic mode status;
+- tracked BSSID count;
+- total retained signal-sample count.
+
+Manual `Scan Wi-Fi` is disabled while dynamic mode is enabled so the UI does
+not intentionally add manual scan requests on top of the cadence.
+
+If scan readiness becomes unavailable, dynamic mode is disabled.
+
+### Repository History State
+
+`WifiScanRepository` now exposes an in-memory
+`StateFlow<WifiTemporalObservationHistory>`.
+
+Fresh scan-result broadcasts append measurable BSSID/RSSI observations.
+Cached and unknown-freshness snapshots remain visible through the latest scan
+state but do not append temporal samples.
+
+## Phase 2A.2 Non-Goals
+
+This block still does not add:
+
+- background scanning;
+- scan-throttling bypasses;
+- persisted history or Room;
+- signal smoothing or moving averages;
+- interpolation for missing observations;
+- a signal-over-time chart;
+- strongest/weakest ranking across a time window;
+- cross-session history.
+
+Those belong after the foreground acquisition loop has been validated on real
+hardware.
