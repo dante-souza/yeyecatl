@@ -424,6 +424,9 @@ Phase 0 outputs are recorded in `docs/research/`, `docs/architecture/`, and `doc
 - show up to five weakest BSSID observations;
 - keep duplicate SSIDs distinct by BSSID;
 - exclude observations without RSSI from ranking;
+- provide a mutually exclusive `All / Strongest 5 / Weakest 5` spectrum filter;
+- apply strongest/weakest ranking within the currently selected Wi-Fi band;
+- filter only the spectrum projection while preserving the complete scan snapshot and diagnostics;
 - do not introduce history, repeated-scan trends, moving averages or persistence.
 
 ### Phase 2 — Analyzer
