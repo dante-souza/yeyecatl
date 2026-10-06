@@ -179,7 +179,7 @@ Phase 0 platform and architecture decisions are recorded in:
 - `docs/testing/android-device-validation.md`
 - `docs/testing/continuous-integration.md`
 - `docs/architecture/app-shell.md`
-- `docs/validation/phase-2zero/README.md`
+- `docs/validation/phase-2zero/README.md`\n- `docs/architecture/wifi-temporal-observation.md`
 
 ## 5. Suggested Modules / Packages
 
@@ -237,7 +237,7 @@ Start simple. Split into Gradle modules only when build time, ownership, or depe
 
 **Phase 1I status:** implementation complete on the feature branch; final acceptance requires GitHub CI and Galaxy J8 validation.
 
-**Phase 2-zero status:** complete and physically validated on the Samsung Galaxy J8. The latest scan snapshot is ranked by RSSI and the spectrum can switch between `All / Strongest 5 / Weakest 5` within the selected band. The complete scan snapshot and diagnostic list remain unchanged; no temporal observation semantics were introduced.
+**Phase 2-zero status:** complete and physically validated on the Samsung Galaxy J8. The latest scan snapshot is ranked by RSSI and the spectrum can switch between `All / Strongest 5 / Weakest 5` within the selected band. The complete scan snapshot and diagnostic list remain unchanged; no temporal observation semantics were introduced.\n\n**Phase 2A.1 status:** temporal domain baseline introduced. Fresh scan snapshots can accumulate RSSI samples by BSSID using snapshot receipt time; cached/unknown snapshots do not create history points. Automatic scan cadence, UI history, smoothing and persistence remain intentionally out of scope.
 
 ## 8. Definition of Done
 
