@@ -188,11 +188,17 @@ class YeyecatlAppTest {
         onNodeWithContentDescription(
             "2.4 GHz signal history chart with 7 BSSID series and 7 samples"
         ).assertIsDisplayed()
+        onNodeWithText(
+            "Use Strongest 5 or Weakest 5 for a labeled signal-history view."
+        ).assertIsDisplayed()
 
         onNodeWithText("Strongest 5").performClick()
 
         onNodeWithContentDescription(
             "2.4 GHz signal history chart with 5 BSSID series and 5 samples"
+        ).assertIsDisplayed()
+        onNodeWithContentDescription(
+            "Signal history legend with 5 series"
         ).assertIsDisplayed()
     }
 
