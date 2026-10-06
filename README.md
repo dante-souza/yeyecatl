@@ -417,6 +417,15 @@ Phase 0 outputs are recorded in `docs/research/`, `docs/architecture/`, and `doc
 - classify band and channel;
 - expose development commands through Makefile.
 
+### Phase 2-zero — Static Signal Ranking
+
+- rank only the latest scan snapshot by RSSI;
+- show up to five strongest BSSID observations;
+- show up to five weakest BSSID observations;
+- keep duplicate SSIDs distinct by BSSID;
+- exclude observations without RSSI from ranking;
+- do not introduce history, repeated-scan trends, moving averages or persistence.
+
 ### Phase 2 — Analyzer
 
 - filtering and sorting;
