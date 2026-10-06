@@ -9,6 +9,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.v2.runComposeUiTest
 import io.github.dante_souza.yeyecatl.domain.wifi.ObservedSsid
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth
@@ -203,6 +204,52 @@ class YeyecatlAppTest {
     }
 
     @Test
+    fun nearbyNetworkFiltersRemainIndependentFromSpectrumSelection() = runComposeUiTest {
+        val observations = listOf(
+            observation(
+                ssid = "alpha",
+                bssid = "00:00:00:00:00:01",
+                rssiDbm = -60,
+                frequencyMhz = 2412
+            ),
+            observation(
+                ssid = "bravo",
+                bssid = "00:00:00:00:00:02",
+                rssiDbm = -40,
+                frequencyMhz = 2437
+            ),
+            observation(
+                ssid = "five",
+                bssid = "00:00:00:00:00:03",
+                rssiDbm = -50,
+                frequencyMhz = 5180
+            )
+        )
+
+        setContent {
+            YeyecatlApp(scanState = resultsState(observations))
+        }
+
+        onNodeWithText("Nearby networks").assertIsDisplayed()
+        onNodeWithText("Showing 3 of 3").assertIsDisplayed()
+        onNodeWithText("5 only").performClick()
+        onNodeWithText("Showing 1 of 3").assertIsDisplayed()
+
+        onNodeWithContentDescription(
+            "2.4 GHz Wi-Fi spectrum chart with 2 observed access points"
+        ).assertIsDisplayed()
+
+        onNodeWithText("All bands").performClick()
+        onNodeWithText("Filter SSID or BSSID").performTextInput("bravo")
+        onNodeWithText("Showing 1 of 3").assertIsDisplayed()
+
+        onNodeWithText("Signal strongest").assertIsDisplayed()
+        onNodeWithText("Signal weakest").assertIsDisplayed()
+        onNodeWithText("SSID A-Z").assertIsDisplayed()
+        onNodeWithText("Channel").assertIsDisplayed()
+    }
+
+    @Test
     fun staticSignalRankingIsShownForLatestSnapshot() = runComposeUiTest {
         setContent {
             YeyecatlApp(
@@ -251,7 +298,8 @@ class YeyecatlAppTest {
     private fun observation(
         ssid: String,
         bssid: String,
-        rssiDbm: Int
+        rssiDbm: Int,
+        frequencyMhz: Int = 2412
     ): WifiScanObservation =
         WifiScanObservation(
             ssid = ObservedSsid(
@@ -261,7 +309,7 @@ class YeyecatlAppTest {
             ),
             bssid = bssid,
             rssiDbm = rssiDbm,
-            frequencyMhz = 2412,
+            frequencyMhz = frequencyMhz,
             channelWidth = WifiChannelWidth.Mhz20,
             capabilities = "[ESS]",
             platformTimestampMicros = 1L
