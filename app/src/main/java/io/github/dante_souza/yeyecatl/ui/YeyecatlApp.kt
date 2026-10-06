@@ -33,6 +33,9 @@ import io.github.dante_souza.yeyecatl.R
 import io.github.dante_souza.yeyecatl.domain.wifi.ObservedSsid
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiBand
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationQuery
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationQueryEngine
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationSort
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanBlockReason
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanFreshness
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanObservation
@@ -57,6 +60,7 @@ import io.github.dante_souza.yeyecatl.platform.wifi.WifiHardwareStatus
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiPlatformReadiness
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiPowerStatus
 import io.github.dante_souza.yeyecatl.ui.history.WifiSignalHistoryChart
+import io.github.dante_souza.yeyecatl.ui.networks.WifiObservationQueryControls
 import io.github.dante_souza.yeyecatl.ui.signal.WifiSignalRankingCard
 import io.github.dante_souza.yeyecatl.ui.spectrum.WifiSpectrumChart
 import io.github.dante_souza.yeyecatl.ui.theme.YeyecatlTheme
@@ -266,12 +270,31 @@ private fun ScanResults(
 
     var selectedBandName by rememberSaveable { mutableStateOf(WifiBand.Ghz2_4.name) }
     var selectedSignalScopeName by rememberSaveable { mutableStateOf(WifiSignalScope.All.name) }
+    var observationFilterText by rememberSaveable { mutableStateOf("") }
+    var observationBandName by rememberSaveable { mutableStateOf(ALL_BANDS_KEY) }
+    var observationSortName by rememberSaveable {
+        mutableStateOf(WifiObservationSort.PlatformOrder.name)
+    }
+
     val selectedBand = WifiBand.valueOf(selectedBandName)
     val selectedSignalScope = WifiSignalScope.valueOf(selectedSignalScopeName)
+    val observationBand = observationBandName
+        .takeUnless { it == ALL_BANDS_KEY }
+        ?.let(WifiBand::valueOf)
+    val observationSort = WifiObservationSort.valueOf(observationSortName)
+
     val spectrumObservations = spectrumObservations(
         observations = snapshot.observations,
         band = selectedBand,
         scope = selectedSignalScope
+    )
+    val visibleObservations = WifiObservationQueryEngine.apply(
+        observations = snapshot.observations,
+        query = WifiObservationQuery(
+            band = observationBand,
+            text = observationFilterText,
+            sort = observationSort
+        )
     )
 
     BandSelector(
@@ -312,14 +335,51 @@ private fun ScanResults(
         modifier = Modifier.padding(top = 20.dp)
     )
 
+    Text(
+        text = "Nearby networks",
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.padding(top = 24.dp)
+    )
+    Text(
+        text = "Filter and sort only the latest scan list. Spectrum and temporal history remain unchanged.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 4.dp)
+    )
+    WifiObservationQueryControls(
+        text = observationFilterText,
+        selectedBand = observationBand,
+        selectedSort = observationSort,
+        onTextChange = { observationFilterText = it },
+        onBandSelected = {
+            observationBandName = it?.name ?: ALL_BANDS_KEY
+        },
+        onSortSelected = {
+            observationSortName = it.name
+        },
+        modifier = Modifier.padding(top = 12.dp)
+    )
+
     ReadinessRow("Observed networks", snapshot.observations.size.toString())
+    ReadinessRow("Visible networks", visibleObservations.size.toString())
     ReadinessRow("Freshness", snapshot.freshness.label())
-    snapshot.observations.forEach { observation ->
+
+    if (visibleObservations.isEmpty()) {
         Text(
-            text = observation.rowText(),
+            text = "No networks match the current filters.",
             style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 8.dp)
         )
+    } else {
+        visibleObservations.forEach { observation ->
+            Text(
+                text = observation.rowText(),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
     }
 }
 
@@ -701,3 +761,5 @@ private fun previewObservation(
 private fun YeyecatlPlaceholderPreview() {
     YeyecatlApp(scanState = previewScanState())
 }
+
+private const val ALL_BANDS_KEY = "all"
