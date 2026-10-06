@@ -1,6 +1,6 @@
 # Wi-Fi Temporal Observation
 
-Status: Phase 2A.2 foreground cadence baseline
+Status: Phase 2A.3 signal-history visualization baseline
 
 Phase 2A introduces time as a domain dimension without changing the frozen
 Phase 2-zero ranking semantics.
@@ -210,3 +210,97 @@ This block still does not add:
 
 Those belong after the foreground acquisition loop has been validated on real
 hardware.
+
+
+## Phase 2A.3 Signal-Over-Time Visualization
+
+Phase 2A.3 renders the in-memory temporal samples as an RSSI-over-time chart.
+
+The visualization consumes the existing temporal history and does not collect
+new data on its own.
+
+### Filter coupling
+
+The signal-history chart follows the same selection as the spectrum chart:
+
+- selected Wi-Fi band;
+- `All`;
+- `Strongest 5`;
+- `Weakest 5`.
+
+Ranking remains based on the latest snapshot, preserving the frozen Phase
+2-zero semantics. The selected BSSIDs then determine which retained temporal
+series are drawn.
+
+This means Phase 2A does not introduce a new "strongest over time" or "weakest
+over time" ranking definition.
+
+### Projection boundary
+
+The pure projection layer converts retained samples into visual series:
+
+```text
+WifiTemporalObservationHistory
+        +
+latest selected observations
+        +
+selected band
+        |
+        v
+WifiSignalHistoryProjection
+        |
+        v
+BSSID visual series
+        |
+        v
+WifiSignalHistoryChart
+```
+
+Only samples whose observed frequency belongs to the selected band are included
+in that band's chart.
+
+Distinct BSSIDs remain distinct even when they advertise the same SSID.
+
+### Time semantics
+
+The horizontal axis uses the real `observedAtMillis` values already stored in
+`WifiSignalSample`.
+
+A single observed timestamp receives a display viewport extending 30 seconds
+backward so the point can be positioned meaningfully. This changes only the
+visual axis range; it does not create an additional sample.
+
+The chart draws actual sample points and connects consecutive observed points.
+It does not synthesize intermediate RSSI values.
+
+### RSSI semantics
+
+The initial visualization uses the same stable -90 dBm to -30 dBm display range
+as the spectrum projection.
+
+Values outside the display viewport are clamped for drawing only. The stored
+sample remains unchanged.
+
+### Readability
+
+When five or fewer BSSID series are displayed, the latest point is labeled with
+the current SSID display text.
+
+The `All` view may intentionally be dense in crowded environments. The
+`Strongest 5` and `Weakest 5` filters provide the focused views requested in
+Phase 2-zero without deleting or rewriting the complete history.
+
+### Phase 2A.3 Non-Goals
+
+This block still does not add:
+
+- smoothing or moving averages;
+- interpolation;
+- persistence or Room;
+- cross-session history;
+- automatic anomaly detection;
+- temporal strongest/weakest ranking semantics;
+- background collection.
+
+Physical acceptance requires validation on the Galaxy J8 after repository
+checks pass.
