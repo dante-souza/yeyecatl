@@ -108,7 +108,7 @@ Observations without RSSI are excluded from strongest/weakest ranking. Duplicate
 
 `yeyecatl-phase-2zero-j8-ranking.jpg`
 
-The photograph captures the first accepted physical-device rendering of the Phase 2-zero ranking card. The screen shows:
+The committed JPEG is a reduced archival derivative of the original physical-device photograph supplied during validation. It captures the first accepted rendering of the Phase 2-zero ranking card. The screen shows:
 
 - Yeyecatl running on the Galaxy J8;
 - five strongest signals;
@@ -122,7 +122,7 @@ The photograph predates the final spectrum selector addition, so it is intention
 Image SHA-256:
 
 ```text
-bbe4ac9954aee573e4a050cd09fc8ae53d95e811bdca1f90ffea1b54c602ade3
+458904ea5677d75b151dbb541e607e9df43a03bb5eef71effedd11f5d3715d6e
 ```
 
 ## Status
