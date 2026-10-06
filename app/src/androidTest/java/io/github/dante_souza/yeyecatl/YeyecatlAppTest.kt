@@ -1,5 +1,9 @@
 package io.github.dante_souza.yeyecatl
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -13,6 +17,8 @@ import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanObservation
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanResultSource
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanSnapshot
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanState
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiSignalSample
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiTemporalObservationHistory
 import io.github.dante_souza.yeyecatl.ui.YeyecatlApp
 import org.junit.Test
 
@@ -29,6 +35,67 @@ class YeyecatlAppTest {
         onNodeWithText("Scanner").assertIsDisplayed()
         onNodeWithText("Observation").assertIsDisplayed()
         onNodeWithText("Scan Wi-Fi").assertIsDisplayed()
+    }
+
+    @Test
+    fun dynamicScanControlTogglesInHostState() = runComposeUiTest {
+        setContent {
+            var enabled by remember { mutableStateOf(false) }
+            YeyecatlApp(
+                dynamicScanEnabled = enabled,
+                onToggleDynamicScan = { enabled = !enabled }
+            )
+        }
+
+        onNodeWithText("Start dynamic scan").assertIsDisplayed()
+        onNodeWithText("Start dynamic scan").performClick()
+        onNodeWithText("Stop dynamic scan").assertIsDisplayed()
+        onNodeWithText("Foreground cadence: every 30 seconds.", substring = true)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun temporalCountersReportTrackedBssidsAndSamples() = runComposeUiTest {
+        val firstSsid = ObservedSsid("mesh", null, false)
+        val secondSsid = ObservedSsid("other", null, false)
+        val history = WifiTemporalObservationHistory(
+            samplesByBssid = mapOf(
+                "00:00:00:00:00:01" to listOf(
+                    WifiSignalSample(
+                        bssid = "00:00:00:00:00:01",
+                        ssid = firstSsid,
+                        rssiDbm = -40,
+                        frequencyMhz = 2412,
+                        observedAtMillis = 1_000L
+                    ),
+                    WifiSignalSample(
+                        bssid = "00:00:00:00:00:01",
+                        ssid = firstSsid,
+                        rssiDbm = -42,
+                        frequencyMhz = 2412,
+                        observedAtMillis = 2_000L
+                    )
+                ),
+                "00:00:00:00:00:02" to listOf(
+                    WifiSignalSample(
+                        bssid = "00:00:00:00:00:02",
+                        ssid = secondSsid,
+                        rssiDbm = -65,
+                        frequencyMhz = 2437,
+                        observedAtMillis = 2_000L
+                    )
+                )
+            )
+        )
+
+        setContent {
+            YeyecatlApp(temporalHistory = history)
+        }
+
+        onNodeWithText("Tracked BSSIDs").assertIsDisplayed()
+        onNodeWithText("2").assertIsDisplayed()
+        onNodeWithText("Signal samples").assertIsDisplayed()
+        onNodeWithText("3").assertIsDisplayed()
     }
 
     @Test
