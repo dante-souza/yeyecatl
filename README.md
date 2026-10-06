@@ -544,6 +544,7 @@ Current artifacts:
 - Phase 1E nominal spectrum geometry created.
 - Phase 1F spectrum visualization created.
 - Phase 1H adaptive launcher visual identity created.
+- Phase 2-zero static strongest/weakest signal ranking and `All / Strongest 5 / Weakest 5` spectrum filtering physically validated on the Galaxy J8.
 
 That separation is intentional: first define what the instrument should observe, then choose the exact implementation around the capabilities Android actually exposes.
 
