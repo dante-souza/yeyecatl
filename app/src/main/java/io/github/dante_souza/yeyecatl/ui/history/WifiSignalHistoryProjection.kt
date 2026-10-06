@@ -25,14 +25,20 @@ data class WifiSignalHistoryViewport(
 )
 
 object WifiSignalHistoryProjection {
+    const val DEFAULT_MAX_POINTS_PER_SERIES: Int = 30
     private const val SINGLE_POINT_WINDOW_MILLIS = 30_000L
 
     fun series(
         history: WifiTemporalObservationHistory,
         observations: List<WifiScanObservation>,
-        band: WifiBand
-    ): List<WifiSignalHistoryVisualSeries> =
-        observations
+        band: WifiBand,
+        maxPointsPerSeries: Int = DEFAULT_MAX_POINTS_PER_SERIES
+    ): List<WifiSignalHistoryVisualSeries> {
+        require(maxPointsPerSeries > 0) {
+            "maxPointsPerSeries must be greater than zero"
+        }
+
+        return observations
             .distinctBy { it.bssid }
             .mapNotNull { observation ->
                 val bssid = observation.bssid ?: return@mapNotNull null
@@ -47,6 +53,7 @@ object WifiSignalHistoryProjection {
                         )
                     }
                     .toList()
+                    .takeLast(maxPointsPerSeries)
 
                 if (points.isEmpty()) {
                     return@mapNotNull null
@@ -63,6 +70,7 @@ object WifiSignalHistoryProjection {
                     points = points
                 )
             }
+    }
 
     fun viewport(series: List<WifiSignalHistoryVisualSeries>): WifiSignalHistoryViewport? {
         val points = series.flatMap { it.points }
