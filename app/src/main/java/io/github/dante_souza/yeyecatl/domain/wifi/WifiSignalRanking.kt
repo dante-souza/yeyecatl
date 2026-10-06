@@ -1,5 +1,11 @@
 package io.github.dante_souza.yeyecatl.domain.wifi
 
+enum class WifiSignalScope {
+    All,
+    Strongest,
+    Weakest
+}
+
 data class WifiSignalRanking(
     val strongest: List<WifiScanObservation>,
     val weakest: List<WifiScanObservation>
@@ -31,4 +37,15 @@ object WifiSignalRanker {
                 .take(limit)
         )
     }
+
+    fun select(
+        observations: List<WifiScanObservation>,
+        scope: WifiSignalScope,
+        limit: Int = DEFAULT_LIMIT
+    ): List<WifiScanObservation> =
+        when (scope) {
+            WifiSignalScope.All -> observations
+            WifiSignalScope.Strongest -> rank(observations, limit).strongest
+            WifiSignalScope.Weakest -> rank(observations, limit).weakest
+        }
 }
