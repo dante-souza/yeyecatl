@@ -117,3 +117,18 @@ PASS for the temporal pipeline itself:
 - physical operation on Galaxy J8.
 
 Phase 2A is closed after the readability refinement passes repository CI.
+
+
+## Original J8 Screenshot Evidence
+
+The Phase 2A.3 device photographs are preserved as original PNG evidence.
+They must not be resized, recompressed, cropped, converted to JPEG, or otherwise
+rewritten before commit.
+
+| File | Resolution | Bytes | SHA-256 |
+|---|---:|---:|---|
+| `yeyecatl-phase-2a-j8-signal-history-all.png` | 900×1600 | 1,224,422 | `6a91a831cb5f454f547c701539d412f345e970b52583a34b5ee48af16fd92209` |
+| `yeyecatl-phase-2a-j8-signal-history-strongest5.png` | 900×1600 | 1,039,610 | `90ca4ce9fcb538250e166d125f05770a074a407cab6b81843493bf20f4a55460` |
+
+These repository filenames are descriptive aliases only. The file bytes must
+remain identical to the originally supplied PNGs.
