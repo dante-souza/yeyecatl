@@ -3,6 +3,7 @@ package io.github.dante_souza.yeyecatl.ui
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -38,6 +39,8 @@ import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanObservation
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanResultSource
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanSnapshot
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanState
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiSignalRanker
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiSignalScope
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiRfInterpreter
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumCompleteness
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumGeometry
@@ -52,6 +55,7 @@ import io.github.dante_souza.yeyecatl.platform.wifi.WifiDiscoveryPermissionStatu
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiHardwareStatus
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiPlatformReadiness
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiPowerStatus
+import io.github.dante_souza.yeyecatl.ui.signal.WifiSignalRankingCard
 import io.github.dante_souza.yeyecatl.ui.spectrum.WifiSpectrumChart
 import io.github.dante_souza.yeyecatl.ui.theme.YeyecatlTheme
 
@@ -219,16 +223,32 @@ private fun ScanResults(snapshot: WifiScanSnapshot?) {
     }
 
     var selectedBandName by rememberSaveable { mutableStateOf(WifiBand.Ghz2_4.name) }
+    var selectedSignalScopeName by rememberSaveable { mutableStateOf(WifiSignalScope.All.name) }
     val selectedBand = WifiBand.valueOf(selectedBandName)
+    val selectedSignalScope = WifiSignalScope.valueOf(selectedSignalScopeName)
+    val spectrumObservations = spectrumObservations(
+        observations = snapshot.observations,
+        band = selectedBand,
+        scope = selectedSignalScope
+    )
 
     BandSelector(
         selectedBand = selectedBand,
         onSelected = { selectedBandName = it.name }
     )
+    SignalScopeSelector(
+        selectedScope = selectedSignalScope,
+        onSelected = { selectedSignalScopeName = it.name }
+    )
     WifiSpectrumChart(
-        observations = snapshot.observations,
+        observations = spectrumObservations,
         band = selectedBand,
         modifier = Modifier.padding(top = 16.dp)
+    )
+
+    WifiSignalRankingCard(
+        observations = snapshot.observations,
+        modifier = Modifier.padding(top = 20.dp)
     )
 
     ReadinessRow("Observed networks", snapshot.observations.size.toString())
@@ -266,6 +286,85 @@ private fun BandSelector(
         }
     }
 }
+
+@Composable
+private fun SignalScopeSelector(
+    selectedScope: WifiSignalScope,
+    onSelected: (WifiSignalScope) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp)
+    ) {
+        Text(
+            text = "Spectrum filter",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            WifiSignalScope.entries.forEach { scope ->
+                val buttonModifier = Modifier.weight(1f)
+                val contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp)
+                if (scope == selectedScope) {
+                    Button(
+                        onClick = { onSelected(scope) },
+                        modifier = buttonModifier,
+                        contentPadding = contentPadding
+                    ) {
+                        Text(
+                            text = scope.label(),
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 1
+                        )
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = { onSelected(scope) },
+                        modifier = buttonModifier,
+                        contentPadding = contentPadding
+                    ) {
+                        Text(
+                            text = scope.label(),
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun spectrumObservations(
+    observations: List<WifiScanObservation>,
+    band: WifiBand,
+    scope: WifiSignalScope
+): List<WifiScanObservation> {
+    if (scope == WifiSignalScope.All) {
+        return observations
+    }
+
+    val observationsInBand = observations.filter {
+        WifiRfInterpreter.interpret(it).band == band
+    }
+    return WifiSignalRanker.select(
+        observations = observationsInBand,
+        scope = scope
+    )
+}
+
+private fun WifiSignalScope.label(): String =
+    when (this) {
+        WifiSignalScope.All -> "All"
+        WifiSignalScope.Strongest -> "Strongest 5"
+        WifiSignalScope.Weakest -> "Weakest 5"
+    }
 
 @Composable
 private fun ReadinessRow(label: String, value: String) {

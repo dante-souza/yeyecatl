@@ -179,6 +179,7 @@ Phase 0 platform and architecture decisions are recorded in:
 - `docs/testing/android-device-validation.md`
 - `docs/testing/continuous-integration.md`
 - `docs/architecture/app-shell.md`
+- `docs/validation/phase-2zero/README.md`
 
 ## 5. Suggested Modules / Packages
 
@@ -226,6 +227,7 @@ Start simple. Split into Gradle modules only when build time, ownership, or depe
 | 1H | Launcher visual identity | production adaptive launcher icon with Yeyecatl foreground, background and themed monochrome layers implemented |
 | 1I | Splash + app shell | branded splash, light/dark Compose theme and stable scanner shell implemented without changing RF behavior |
 | 1 | Minimal scanner | nearby scans normalized and displayed reliably |
+| 2-zero | Static signal ranking | latest snapshot exposes strongest/weakest rankings and lets the spectrum plot switch between All, Strongest 5 and Weakest 5 for the selected band, without temporal behavior |
 | 2 | Analyzer | band/channel views and filtering implemented |
 | 3 | History | observation persistence and signal history available |
 | 4 | Field survey | snapshots, annotations and comparisons available |
@@ -234,6 +236,8 @@ Start simple. Split into Gradle modules only when build time, ownership, or depe
 **Phase 1H status:** complete. The production launcher identity uses mask-safe adaptive icon layers and supports Android 13 themed icons.
 
 **Phase 1I status:** implementation complete on the feature branch; final acceptance requires GitHub CI and Galaxy J8 validation.
+
+**Phase 2-zero status:** complete and physically validated on the Samsung Galaxy J8. The latest scan snapshot is ranked by RSSI and the spectrum can switch between `All / Strongest 5 / Weakest 5` within the selected band. The complete scan snapshot and diagnostic list remain unchanged; no temporal observation semantics were introduced.
 
 ## 8. Definition of Done
 
