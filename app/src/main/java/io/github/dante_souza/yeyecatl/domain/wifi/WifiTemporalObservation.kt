@@ -16,10 +16,16 @@ data class WifiTemporalObservationHistory(
 }
 
 object WifiTemporalObservationAccumulator {
+    const val DEFAULT_MAX_SAMPLES_PER_BSSID: Int = 120
+
     fun append(
         current: WifiTemporalObservationHistory,
-        snapshot: WifiScanSnapshot
+        snapshot: WifiScanSnapshot,
+        maxSamplesPerBssid: Int = DEFAULT_MAX_SAMPLES_PER_BSSID
     ): WifiTemporalObservationHistory {
+        require(maxSamplesPerBssid > 0) {
+            "maxSamplesPerBssid must be greater than zero"
+        }
         if (snapshot.freshness != WifiScanFreshness.Fresh) {
             return current
         }
@@ -43,7 +49,8 @@ object WifiTemporalObservationAccumulator {
 
         val updated = current.samplesByBssid.toMutableMap()
         samples.groupBy { it.bssid }.forEach { (bssid, newSamples) ->
-            updated[bssid] = current.samplesFor(bssid) + newSamples
+            updated[bssid] = (current.samplesFor(bssid) + newSamples)
+                .takeLast(maxSamplesPerBssid)
         }
 
         return WifiTemporalObservationHistory(samplesByBssid = updated)
