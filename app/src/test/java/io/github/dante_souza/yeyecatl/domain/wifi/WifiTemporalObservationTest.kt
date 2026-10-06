@@ -109,6 +109,33 @@ class WifiTemporalObservationTest {
     }
 
     @Test
+    fun keepsOnlyMostRecentSamplesPerBssidWithinConfiguredLimit() {
+        var history = WifiTemporalObservationHistory()
+
+        (1L..4L).forEach { second ->
+            history = WifiTemporalObservationAccumulator.append(
+                current = history,
+                snapshot = snapshot(
+                    receivedAtMillis = second * 1_000L,
+                    observations = listOf(
+                        observation(
+                            ssid = "lab",
+                            bssid = "00:00:00:00:00:01",
+                            rssiDbm = -40 - second.toInt()
+                        )
+                    )
+                ),
+                maxSamplesPerBssid = 3
+            )
+        }
+
+        assertEquals(
+            listOf(2_000L, 3_000L, 4_000L),
+            history.samplesFor("00:00:00:00:00:01").map { it.observedAtMillis }
+        )
+    }
+
+    @Test
     fun cachedSnapshotsDoNotCreateTemporalSamples() {
         val current = WifiTemporalObservationHistory(
             samplesByBssid = mapOf(
