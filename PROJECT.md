@@ -226,6 +226,7 @@ Start simple. Split into Gradle modules only when build time, ownership, or depe
 | 1H | Launcher visual identity | production adaptive launcher icon with Yeyecatl foreground, background and themed monochrome layers implemented |
 | 1I | Splash + app shell | branded splash, light/dark Compose theme and stable scanner shell implemented without changing RF behavior |
 | 1 | Minimal scanner | nearby scans normalized and displayed reliably |
+| 2-zero | Static signal ranking | latest scan snapshot exposes up to five strongest and five weakest BSSID observations by RSSI, without temporal behavior |
 | 2 | Analyzer | band/channel views and filtering implemented |
 | 3 | History | observation persistence and signal history available |
 | 4 | Field survey | snapshots, annotations and comparisons available |
@@ -234,6 +235,8 @@ Start simple. Split into Gradle modules only when build time, ownership, or depe
 **Phase 1H status:** complete. The production launcher identity uses mask-safe adaptive icon layers and supports Android 13 themed icons.
 
 **Phase 1I status:** implementation complete on the feature branch; final acceptance requires GitHub CI and Galaxy J8 validation.
+
+**Phase 2-zero status:** implementation in progress. This deliberately static pre-phase ranks the latest scan snapshot by RSSI and does not introduce temporal observation semantics.
 
 ## 8. Definition of Done
 
