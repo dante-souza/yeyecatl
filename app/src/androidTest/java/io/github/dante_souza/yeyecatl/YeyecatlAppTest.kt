@@ -48,6 +48,27 @@ class YeyecatlAppTest {
     }
 
     @Test
+    fun staticSignalRankingIsShownForLatestSnapshot() = runComposeUiTest {
+        setContent {
+            YeyecatlApp(
+                scanState = resultsState(
+                    listOf(
+                        observation("strong", "00:00:00:00:00:01", -40),
+                        observation("middle", "00:00:00:00:00:02", -65),
+                        observation("weak", "00:00:00:00:00:03", -90)
+                    )
+                )
+            )
+        }
+
+        onNodeWithText("Signal ranking").assertIsDisplayed()
+        onNodeWithText("Strongest signals").assertIsDisplayed()
+        onNodeWithText("Weakest signals").assertIsDisplayed()
+        onNodeWithText("strong").assertIsDisplayed()
+        onNodeWithText("weak").assertIsDisplayed()
+    }
+
+    @Test
     fun diagnosticListRemainsAvailableWithSyntheticObservation() = runComposeUiTest {
         setContent {
             YeyecatlApp(scanState = resultsState(listOf(observation())))
@@ -70,14 +91,21 @@ class YeyecatlAppTest {
         )
 
     private fun observation(): WifiScanObservation =
+        observation("whanganui", "00:00:00:00:00:01", -42)
+
+    private fun observation(
+        ssid: String,
+        bssid: String,
+        rssiDbm: Int
+    ): WifiScanObservation =
         WifiScanObservation(
             ssid = ObservedSsid(
-                displayText = "whanganui",
+                displayText = ssid,
                 rawBytes = null,
                 isHidden = false
             ),
-            bssid = "00:00:00:00:00:01",
-            rssiDbm = -42,
+            bssid = bssid,
+            rssiDbm = rssiDbm,
             frequencyMhz = 2412,
             channelWidth = WifiChannelWidth.Mhz20,
             capabilities = "[ESS]",
