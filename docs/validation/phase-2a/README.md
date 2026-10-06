@@ -102,7 +102,7 @@ at the right edge of multiple converging traces overlapped. Phase 2A.3a moves
 those labels into a compact legend below focused views and leaves crowded
 `All` mode unlabeled.
 
-Evidence images are archived beside this report.
+The physical-device screenshots were supplied during validation and are summarized by this report. The validation contract does not depend on OCR or inferred values from the images.
 
 ### Phase 2A exit result
 
