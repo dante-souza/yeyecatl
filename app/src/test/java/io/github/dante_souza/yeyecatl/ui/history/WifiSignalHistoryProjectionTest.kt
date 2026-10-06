@@ -38,6 +38,36 @@ class WifiSignalHistoryProjectionTest {
     }
 
     @Test
+    fun projectionKeepsOnlyMostRecentVisualPointsPerBssid() {
+        val bssid = "00:00:00:00:00:01"
+        val history = WifiTemporalObservationHistory(
+            samplesByBssid = mapOf(
+                bssid to (1L..5L).map { second ->
+                    sample(
+                        ssid = "lab",
+                        bssid = bssid,
+                        rssiDbm = -40 - second.toInt(),
+                        frequencyMhz = 2412,
+                        observedAtMillis = second * 1_000L
+                    )
+                }
+            )
+        )
+
+        val series = WifiSignalHistoryProjection.series(
+            history = history,
+            observations = listOf(observation("lab", bssid, -45, 2412)),
+            band = WifiBand.Ghz2_4,
+            maxPointsPerSeries = 3
+        )
+
+        assertEquals(
+            listOf(3_000L, 4_000L, 5_000L),
+            series.single().points.map { it.observedAtMillis }
+        )
+    }
+
+    @Test
     fun sameSsidAcrossDifferentBssidsRemainsSeparateSeries() {
         val history = WifiTemporalObservationHistory(
             samplesByBssid = mapOf(
