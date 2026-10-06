@@ -545,7 +545,8 @@ Current artifacts:
 - Phase 1F spectrum visualization created.
 - Phase 1H adaptive launcher visual identity created.
 - Phase 2-zero static strongest/weakest signal ranking and `All / Strongest 5 / Weakest 5` spectrum filtering physically validated on the Galaxy J8.
-- Phase 2A foreground dynamic scanning baseline implemented with 30-second lifecycle-bound cadence, fresh-only bounded temporal RSSI history, and visible sample counters.
+- Phase 2A foreground dynamic scanning physically validated on the Galaxy J8 with 30-second lifecycle-bound cadence and correct fresh/cached handling.
+- Phase 2A signal-over-time chart implemented using the current band and `All / Strongest 5 / Weakest 5` scope over retained BSSID RSSI samples.
 
 That separation is intentional: first define what the instrument should observe, then choose the exact implementation around the capabilities Android actually exposes.
 
