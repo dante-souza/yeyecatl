@@ -71,13 +71,11 @@ class WifiForegroundScanCadence(
     private fun scheduleNext() {
         scheduledTask = scheduler.schedule(intervalMillis) {
             scheduledTask = null
-            if (!isEnabled || !foreground) {
-                return@schedule
-            }
-
-            requestScan()
             if (isEnabled && foreground) {
-                scheduleNext()
+                requestScan()
+                if (isEnabled && foreground) {
+                    scheduleNext()
+                }
             }
         }
     }
