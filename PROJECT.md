@@ -180,6 +180,7 @@ Phase 0 platform and architecture decisions are recorded in:
 - `docs/testing/continuous-integration.md`
 - `docs/architecture/app-shell.md`
 - `docs/validation/phase-2zero/README.md`
+- `docs/architecture/wifi-temporal-observation.md`
 
 ## 5. Suggested Modules / Packages
 
@@ -228,8 +229,12 @@ Start simple. Split into Gradle modules only when build time, ownership, or depe
 | 1I | Splash + app shell | branded splash, light/dark Compose theme and stable scanner shell implemented without changing RF behavior |
 | 1 | Minimal scanner | nearby scans normalized and displayed reliably |
 | 2-zero | Static signal ranking | latest snapshot exposes strongest/weakest rankings and lets the spectrum plot switch between All, Strongest 5 and Weakest 5 for the selected band, without temporal behavior |
-| 2 | Analyzer | band/channel views and filtering implemented |
-| 3 | History | observation persistence and signal history available |
+| 2A | Temporal observation | foreground repeated scanning, fresh-only bounded BSSID RSSI history and signal-over-time visualization implemented |
+| 2B | Filtering / sorting | current observations can be filtered and sorted deterministically without changing underlying scan/history data |
+| 2C | Network detail | one selected BSSID can be inspected with current RF metadata and retained temporal context |
+| 2D | Analyzer visualizations | analyzer-focused derived views build on existing RF and temporal models without inventing unavailable platform precision |
+| 2E | Structured export | user-initiated, versioned export of supported observation/analyzer data is available |
+| 3 | History | observation persistence, scan sessions and cross-session history available |
 | 4 | Field survey | snapshots, annotations and comparisons available |
 | 5 | Interop | versioned export compatible with Ehécatl concepts |
 
@@ -238,6 +243,12 @@ Start simple. Split into Gradle modules only when build time, ownership, or depe
 **Phase 1I status:** implementation complete on the feature branch; final acceptance requires GitHub CI and Galaxy J8 validation.
 
 **Phase 2-zero status:** complete and physically validated on the Samsung Galaxy J8. The latest scan snapshot is ranked by RSSI and the spectrum can switch between `All / Strongest 5 / Weakest 5` within the selected band. The complete scan snapshot and diagnostic list remain unchanged; no temporal observation semantics were introduced.
+
+**Phase 2A.1 status:** temporal domain baseline introduced. Fresh scan snapshots accumulate RSSI samples by BSSID using snapshot receipt time; cached/unknown snapshots do not create history points.
+
+**Phase 2A.2 status:** foreground dynamic scan cadence introduced and physically validated on the Samsung Galaxy J8. Dynamic mode is explicit, pauses outside the Activity foreground, requests scans every 30 seconds, exposes temporal sample counters, and bounds each BSSID history to the most recent 120 samples. Android scan rejection remains a normal platform outcome.
+
+**Phase 2A.3 status:** signal-over-time visualization physically validated on the Samsung Galaxy J8. The history chart follows the selected band and frozen `All / Strongest 5 / Weakest 5` latest-snapshot scope, draws retained BSSID RSSI samples over their real observation times, and introduces no smoothing, interpolation or persistence. A final readability refinement moves focused-series labels into a compact legend so traces remain readable on-device.
 
 ## 8. Definition of Done
 

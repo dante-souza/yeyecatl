@@ -46,6 +46,7 @@ import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumCompleteness
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumGeometry
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumSegment
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiTemporalObservationHistory
 import io.github.dante_souza.yeyecatl.platform.wifi.LocationServicesStatus
 import io.github.dante_souza.yeyecatl.platform.wifi.PermissionGrantState
 import io.github.dante_souza.yeyecatl.platform.wifi.PermissionRequirement
@@ -55,6 +56,7 @@ import io.github.dante_souza.yeyecatl.platform.wifi.WifiDiscoveryPermissionStatu
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiHardwareStatus
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiPlatformReadiness
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiPowerStatus
+import io.github.dante_souza.yeyecatl.ui.history.WifiSignalHistoryChart
 import io.github.dante_souza.yeyecatl.ui.signal.WifiSignalRankingCard
 import io.github.dante_souza.yeyecatl.ui.spectrum.WifiSpectrumChart
 import io.github.dante_souza.yeyecatl.ui.theme.YeyecatlTheme
@@ -63,7 +65,10 @@ import io.github.dante_souza.yeyecatl.ui.theme.YeyecatlTheme
 fun YeyecatlApp(
     readiness: WifiPlatformReadiness = previewReadiness(),
     scanState: WifiScanState = WifiScanState.Idle,
+    temporalHistory: WifiTemporalObservationHistory = WifiTemporalObservationHistory(),
+    dynamicScanEnabled: Boolean = false,
     onRequestScan: () -> Unit = {},
+    onToggleDynamicScan: () -> Unit = {},
     onRequestDiscoveryPermission: () -> Unit = {}
 ) {
     YeyecatlTheme {
@@ -80,7 +85,10 @@ fun YeyecatlApp(
                 YeyecatlReadinessScreen(
                     readiness = readiness,
                     scanState = scanState,
+                    temporalHistory = temporalHistory,
+                    dynamicScanEnabled = dynamicScanEnabled,
                     onRequestScan = onRequestScan,
+                    onToggleDynamicScan = onToggleDynamicScan,
                     onRequestDiscoveryPermission = onRequestDiscoveryPermission
                 )
             }
@@ -127,7 +135,10 @@ private fun YeyecatlTopBar() {
 fun YeyecatlReadinessScreen(
     readiness: WifiPlatformReadiness,
     scanState: WifiScanState,
+    temporalHistory: WifiTemporalObservationHistory,
+    dynamicScanEnabled: Boolean,
     onRequestScan: () -> Unit,
+    onToggleDynamicScan: () -> Unit,
     onRequestDiscoveryPermission: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -181,12 +192,31 @@ fun YeyecatlReadinessScreen(
 
         Button(
             onClick = onRequestScan,
-            enabled = readiness.isDiscoveryAllowed,
+            enabled = readiness.isDiscoveryAllowed && !dynamicScanEnabled,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 12.dp)
         ) {
             Text("Scan Wi-Fi")
+        }
+
+        OutlinedButton(
+            onClick = onToggleDynamicScan,
+            enabled = readiness.isDiscoveryAllowed,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+        ) {
+            Text(if (dynamicScanEnabled) "Stop dynamic scan" else "Start dynamic scan")
+        }
+
+        if (dynamicScanEnabled) {
+            Text(
+                text = "Foreground cadence: every 30 seconds. Android may reject individual scan requests.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp)
+            )
         }
 
         Text(
@@ -196,6 +226,12 @@ fun YeyecatlReadinessScreen(
             modifier = Modifier.padding(top = 28.dp)
         )
         ReadinessRow("Scan state", scanState.label())
+        ReadinessRow("Dynamic scan", if (dynamicScanEnabled) "Running" else "Stopped")
+        ReadinessRow("Tracked BSSIDs", temporalHistory.samplesByBssid.size.toString())
+        ReadinessRow(
+            "Signal samples",
+            temporalHistory.samplesByBssid.values.sumOf { it.size }.toString()
+        )
         scanState.message()?.let {
             Text(
                 text = it,
@@ -204,7 +240,10 @@ fun YeyecatlReadinessScreen(
                 modifier = Modifier.padding(top = 8.dp)
             )
         }
-        ScanResults(scanState.latestSnapshot)
+        ScanResults(
+            snapshot = scanState.latestSnapshot,
+            temporalHistory = temporalHistory
+        )
 
         Text(
             text = "Spectrum geometry is observational; interference scoring is not enabled.",
@@ -216,7 +255,10 @@ fun YeyecatlReadinessScreen(
 }
 
 @Composable
-private fun ScanResults(snapshot: WifiScanSnapshot?) {
+private fun ScanResults(
+    snapshot: WifiScanSnapshot?,
+    temporalHistory: WifiTemporalObservationHistory
+) {
     if (snapshot == null) {
         ReadinessRow("Observed networks", "No scan results yet")
         return
@@ -244,6 +286,25 @@ private fun ScanResults(snapshot: WifiScanSnapshot?) {
         observations = spectrumObservations,
         band = selectedBand,
         modifier = Modifier.padding(top = 16.dp)
+    )
+
+    Text(
+        text = "Signal history",
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.padding(top = 24.dp)
+    )
+    Text(
+        text = "History follows the selected band and All / Strongest 5 / Weakest 5 filter.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 4.dp)
+    )
+    WifiSignalHistoryChart(
+        history = temporalHistory,
+        observations = spectrumObservations,
+        band = selectedBand,
+        modifier = Modifier.padding(top = 8.dp)
     )
 
     WifiSignalRankingCard(
@@ -346,17 +407,18 @@ private fun spectrumObservations(
     band: WifiBand,
     scope: WifiSignalScope
 ): List<WifiScanObservation> {
-    if (scope == WifiSignalScope.All) {
-        return observations
-    }
-
     val observationsInBand = observations.filter {
         WifiRfInterpreter.interpret(it).band == band
     }
-    return WifiSignalRanker.select(
-        observations = observationsInBand,
-        scope = scope
-    )
+
+    return if (scope == WifiSignalScope.All) {
+        observationsInBand
+    } else {
+        WifiSignalRanker.select(
+            observations = observationsInBand,
+            scope = scope
+        )
+    }
 }
 
 private fun WifiSignalScope.label(): String =
