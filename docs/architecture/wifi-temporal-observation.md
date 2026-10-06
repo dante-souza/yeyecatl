@@ -283,12 +283,14 @@ sample remains unchanged.
 
 ### Readability
 
-When five or fewer BSSID series are displayed, the latest point is labeled with
-the current SSID display text.
+Series labels are kept outside the plot area. When five or fewer BSSID series
+are displayed, a compact legend below the chart shows the series color, SSID,
+a short BSSID suffix and the latest RSSI value.
 
-The `All` view may intentionally be dense in crowded environments. The
-`Strongest 5` and `Weakest 5` filters provide the focused views requested in
-Phase 2-zero without deleting or rewriting the complete history.
+The `All` view may intentionally be dense in crowded environments. When more
+than five series are present, the chart remains unlabeled and the UI directs
+the user to `Strongest 5` or `Weakest 5` for a focused labeled view. This
+prevents right-edge label collisions without deleting or rewriting history.
 
 For device-side rendering cost, each visual series projects only its 30 most
 recent retained samples by default. The temporal store still retains up to 120
@@ -309,3 +311,21 @@ This block still does not add:
 
 Physical acceptance requires validation on the Galaxy J8 after repository
 checks pass.
+
+
+## Phase 2A.3a Readability Refinement
+
+Physical J8 validation showed that painting SSID labels at the latest point made
+several series unreadable when their RSSI values converged.
+
+The final Phase 2A chart therefore:
+
+- keeps all labels out of the plotting area;
+- shows a compact legend only for five or fewer series;
+- disambiguates equal SSIDs with a short BSSID suffix;
+- includes latest RSSI in the legend;
+- keeps the stable -90 dBm to -30 dBm axis;
+- preserves the full `All` overview without attempting label placement.
+
+This is a presentation refinement only. It changes no temporal identity,
+freshness, retention, filtering, or ranking semantics.
