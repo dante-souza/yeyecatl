@@ -1,16 +1,20 @@
 package io.github.dante_souza.yeyecatl.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,9 +24,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import io.github.dante_souza.yeyecatl.R
 import io.github.dante_souza.yeyecatl.domain.wifi.ObservedSsid
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiBand
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth
@@ -47,6 +53,7 @@ import io.github.dante_souza.yeyecatl.platform.wifi.WifiHardwareStatus
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiPlatformReadiness
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiPowerStatus
 import io.github.dante_souza.yeyecatl.ui.spectrum.WifiSpectrumChart
+import io.github.dante_souza.yeyecatl.ui.theme.YeyecatlTheme
 
 @Composable
 fun YeyecatlApp(
@@ -55,17 +62,59 @@ fun YeyecatlApp(
     onRequestScan: () -> Unit = {},
     onRequestDiscoveryPermission: () -> Unit = {}
 ) {
-    MaterialTheme {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
+    YeyecatlTheme {
+        Scaffold(
+            topBar = { YeyecatlTopBar() },
+            containerColor = MaterialTheme.colorScheme.background
+        ) { innerPadding ->
+            Surface(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                color = MaterialTheme.colorScheme.background
+            ) {
+                YeyecatlReadinessScreen(
+                    readiness = readiness,
+                    scanState = scanState,
+                    onRequestScan = onRequestScan,
+                    onRequestDiscoveryPermission = onRequestDiscoveryPermission
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun YeyecatlTopBar() {
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 2.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            YeyecatlReadinessScreen(
-                readiness = readiness,
-                scanState = scanState,
-                onRequestScan = onRequestScan,
-                onRequestDiscoveryPermission = onRequestDiscoveryPermission
+            Image(
+                painter = painterResource(R.drawable.yeyecatl_launcher_icon),
+                contentDescription = null,
+                modifier = Modifier.size(44.dp)
             )
+            Column {
+                Text(
+                    text = "Yeyecatl",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = "Wi-Fi field analyzer",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
@@ -82,31 +131,45 @@ fun YeyecatlReadinessScreen(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(24.dp),
+            .padding(horizontal = 20.dp, vertical = 24.dp),
         horizontalAlignment = Alignment.Start,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Top
     ) {
         Text(
-            text = "Yeyecatl",
+            text = "Scanner",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.SemiBold
         )
         Text(
-            text = "Android Wi-Fi platform readiness",
+            text = "Android Wi-Fi platform readiness and nearby spectrum observation.",
             style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(top = 8.dp)
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 6.dp)
         )
-        ReadinessRow("Wi-Fi hardware", readiness.hardware.label())
-        ReadinessRow("Wi-Fi state", readiness.wifiPower.label())
-        ReadinessRow("Location services", readiness.locationServices.label())
-        ReadinessRow("Scan permission", readiness.discoveryPermission.label())
-        ReadinessRow("Discovery allowed", readiness.isDiscoveryAllowed.yesNo())
-        ReadinessRow("Scanner", readiness.scanner.label())
+
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 20.dp),
+            shape = MaterialTheme.shapes.large,
+            tonalElevation = 2.dp
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                ReadinessRow("Wi-Fi hardware", readiness.hardware.label())
+                ReadinessRow("Wi-Fi state", readiness.wifiPower.label())
+                ReadinessRow("Location services", readiness.locationServices.label())
+                ReadinessRow("Scan permission", readiness.discoveryPermission.label())
+                ReadinessRow("Discovery allowed", readiness.isDiscoveryAllowed.yesNo())
+                ReadinessRow("Scanner", readiness.scanner.label())
+            }
+        }
 
         if (readiness.discoveryPermission.canRequestFromApp) {
-            Button(
+            OutlinedButton(
                 onClick = onRequestDiscoveryPermission,
-                modifier = Modifier.padding(top = 24.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 20.dp)
             ) {
                 Text("Grant scan permission")
             }
@@ -115,11 +178,19 @@ fun YeyecatlReadinessScreen(
         Button(
             onClick = onRequestScan,
             enabled = readiness.isDiscoveryAllowed,
-            modifier = Modifier.padding(top = 16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp)
         ) {
             Text("Scan Wi-Fi")
         }
 
+        Text(
+            text = "Observation",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(top = 28.dp)
+        )
         ReadinessRow("Scan state", scanState.label())
         scanState.message()?.let {
             Text(
@@ -132,10 +203,10 @@ fun YeyecatlReadinessScreen(
         ScanResults(scanState.latestSnapshot)
 
         Text(
-            text = "Phase 1F: spectrum visualization only. Interference analysis is intentionally not implemented yet.",
-            style = MaterialTheme.typography.bodyMedium,
+            text = "Spectrum geometry is observational; interference scoring is not enabled.",
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 16.dp)
+            modifier = Modifier.padding(top = 20.dp, bottom = 8.dp)
         )
     }
 }
@@ -198,19 +269,23 @@ private fun BandSelector(
 
 @Composable
 private fun ReadinessRow(label: String, value: String) {
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 16.dp)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.bodyLarge
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Medium
         )
     }
 }

@@ -3,6 +3,16 @@
         <item name="android:windowActionBar">false</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowBackground">@color/yeyecatl_window_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@color/yeyecatl_navigation_bar</item>
         <item name="android:colorAccent">#006A60</item>
+    </style>
+
+    <style name="Theme.Yeyecatl.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/yeyecatl_splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_artwork</item>
+        <item name="postSplashScreenTheme">@style/Theme.Yeyecatl</item>
     </style>
 </resources>

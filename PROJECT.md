@@ -177,6 +177,8 @@ Phase 0 platform and architecture decisions are recorded in:
 - `docs/architecture/wifi-spectrum-visualization.md`
 - `docs/adr/ADR-011-spectrum-visualization-boundary.md`
 - `docs/testing/android-device-validation.md`
+- `docs/testing/continuous-integration.md`
+- `docs/architecture/app-shell.md`
 
 ## 5. Suggested Modules / Packages
 
@@ -222,6 +224,7 @@ Start simple. Split into Gradle modules only when build time, ownership, or depe
 | 1E | Spectrum geometry | nominal occupied spans and geometric overlap calculated without interference scoring |
 | 1F | Spectrum visualization | 2.4/5/6 GHz channel graph rendered from domain geometry without scoring |
 | 1H | Launcher visual identity | production adaptive launcher icon with Yeyecatl foreground, background and themed monochrome layers implemented |
+| 1I | Splash + app shell | branded splash, light/dark Compose theme and stable scanner shell implemented without changing RF behavior |
 | 1 | Minimal scanner | nearby scans normalized and displayed reliably |
 | 2 | Analyzer | band/channel views and filtering implemented |
 | 3 | History | observation persistence and signal history available |
@@ -229,6 +232,8 @@ Start simple. Split into Gradle modules only when build time, ownership, or depe
 | 5 | Interop | versioned export compatible with Ehécatl concepts |
 
 **Phase 1H status:** complete. The production launcher identity uses mask-safe adaptive icon layers and supports Android 13 themed icons.
+
+**Phase 1I status:** implementation complete on the feature branch; final acceptance requires GitHub CI and Galaxy J8 validation.
 
 ## 8. Definition of Done
 
