@@ -21,6 +21,8 @@ import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanRepository
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanResultSource
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanState
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanStateTransitions
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiTemporalObservationAccumulator
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiTemporalObservationHistory
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -31,6 +33,7 @@ class AndroidWifiScanRepository(
     private val appContext = context.applicationContext
     private val wifiManager = appContext.getSystemService(WifiManager::class.java)
     private val state = MutableStateFlow<WifiScanState>(WifiScanState.Idle)
+    private val temporalHistory = MutableStateFlow(WifiTemporalObservationHistory())
     private var receiverRegistered = false
     private var requestInFlight = false
 
@@ -43,6 +46,8 @@ class AndroidWifiScanRepository(
     }
 
     override fun observeScanState(): StateFlow<WifiScanState> = state
+
+    override fun observeTemporalHistory(): StateFlow<WifiTemporalObservationHistory> = temporalHistory
 
     override fun start() {
         if (receiverRegistered) {
@@ -162,7 +167,7 @@ class AndroidWifiScanRepository(
                     "widths=${observations.map { it.channelWidth }.toSet()}"
             )
 
-            state.value = WifiScanStateTransitions.resultsAvailable(
+            val nextState = WifiScanStateTransitions.resultsAvailable(
                 current = state.value,
                 observations = observations,
                 freshness = freshness,
@@ -170,6 +175,13 @@ class AndroidWifiScanRepository(
                 resultsUpdated = resultsUpdated,
                 receivedAtMillis = System.currentTimeMillis()
             )
+            state.value = nextState
+            nextState.latestSnapshot?.let { snapshot ->
+                temporalHistory.value = WifiTemporalObservationAccumulator.append(
+                    current = temporalHistory.value,
+                    snapshot = snapshot
+                )
+            }
         } catch (_: SecurityException) {
             devLog("scan results security failure")
             state.value = WifiScanStateTransitions.blocked(
