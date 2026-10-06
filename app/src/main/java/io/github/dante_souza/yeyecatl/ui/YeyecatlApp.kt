@@ -360,6 +360,12 @@ private fun ScanResults(
         },
         modifier = Modifier.padding(top = 12.dp)
     )
+    Text(
+        text = "Showing ${visibleObservations.size} of ${snapshot.observations.size}",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 8.dp)
+    )
 
     ReadinessRow("Observed networks", snapshot.observations.size.toString())
     ReadinessRow("Visible networks", visibleObservations.size.toString())
