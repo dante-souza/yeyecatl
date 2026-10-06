@@ -290,6 +290,11 @@ The `All` view may intentionally be dense in crowded environments. The
 `Strongest 5` and `Weakest 5` filters provide the focused views requested in
 Phase 2-zero without deleting or rewriting the complete history.
 
+For device-side rendering cost, each visual series projects only its 30 most
+recent retained samples by default. The temporal store still retains up to 120
+samples per BSSID. The visual cap therefore limits Canvas work without deleting
+history.
+
 ### Phase 2A.3 Non-Goals
 
 This block still does not add:
