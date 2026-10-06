@@ -1,16 +1,11 @@
-<p align="center">
-  <img src="docs/assets/yeyecatl-logo.png" alt="Yeyecatl logo" width="420" />
-</p>
+![Yeyecatl](./docs/assets/branding/yeyecatl-brand-board.png)
 
-<h1 align="center">Yeyecatl</h1>
+# Yeyecatl
 
-<p align="center">
-  <strong>Android Wi-Fi cartography and wireless observation for Tlalli.</strong>
-</p>
+**Android Wi-Fi cartography and wireless observation for Tlalli.**
 
-<p align="center">
-  A mobile sibling of <strong>Ehécatl</strong>, designed to observe, map, inspect and understand the Wi-Fi environment directly from Android devices.
-</p>
+A mobile sibling of **Ehécatl**, designed to observe, map, inspect and understand
+the Wi-Fi environment directly from Android devices.
 
 ---
 
@@ -146,24 +141,34 @@ The preferred application direction is:
 | Build | Gradle underneath the Android project |
 | Project entry points | **Makefile** |
 
+Phase 1 SDK baseline decisions are documented in `docs/adr/ADR-001-android-sdk-baseline.md`: `minSdk = 29`, `targetSdk = 36`, and `compileSdk = 36`. These are Phase 1 decisions, not immutable project requirements.
+
+Android identity is documented in `docs/adr/ADR-006-android-application-identity.md`: `namespace = "io.github.dante_souza.yeyecatl"` and `applicationId = "io.github.dante_souza.yeyecatl"`.
+
 The Makefile remains the human-facing execution layer for the repository.
 
 Developers should not need to remember long Gradle, ADB or helper-script commands for routine project operations.
 
-Example future workflow:
+Common workflow:
 
 ```text
 make help
-make doctor
+make setup
 make build
 make test
-make install
-make run
+make unit-test
+make android-test
 make lint
+make check
+make install-debug
+make adb-devices
 make clean
 ```
 
-The exact targets will be introduced as the project scaffolding is created.
+Physical-device validation procedures are documented in
+`docs/testing/android-device-validation.md`.
+
+Gradle and ADB remain available underneath these targets, but routine local development should start with `make`.
 
 ---
 
@@ -213,6 +218,19 @@ Observation
 ```
 
 The exact schema will evolve as we inspect what Android exposes reliably across versions and devices.
+
+The Phase 0 observation and scan-state contracts are documented in:
+
+- `docs/architecture/wifi-observation-model.md`
+- `docs/architecture/scan-state-model.md`
+
+The Phase 1B/1C Android implementation boundaries are documented in:
+
+- `docs/architecture/android-wifi-platform-readiness.md`
+- `docs/architecture/android-wifi-scan-acquisition.md`
+- `docs/architecture/wifi-rf-interpretation.md`
+- `docs/architecture/wifi-spectrum-geometry.md`
+- `docs/architecture/wifi-spectrum-visualization.md`
 
 This shared model will make it possible to compare Yeyecatl observations with Ehécatl captures later without forcing both applications to share implementation code.
 
@@ -337,6 +355,59 @@ The project will document these boundaries rather than pretending the phone can 
 - determine how 2.4, 5 and 6 GHz observations are reported;
 - define the first observation schema.
 
+Phase 0 outputs are recorded in `docs/research/`, `docs/architecture/`, and `docs/adr/`.
+
+### Phase 1A — Android Foundation
+
+- create the single-module Android project;
+- configure Kotlin, Jetpack Compose and Material 3;
+- add placeholder Yeyecatl UI only;
+- configure JVM unit tests and Android instrumentation test infrastructure;
+- expose build, test, lint, install and adb entry points through Makefile.
+
+### Phase 1B — Android Wi-Fi Platform Readiness
+
+- declare only the Wi-Fi and location permissions/features needed for platform readiness and future foreground discovery;
+- expose Wi-Fi hardware, Wi-Fi state, Location Services and scan-permission readiness;
+- request scan permission only after explicit user action;
+- keep Android Wi-Fi and permission APIs under `platform/wifi`;
+- keep Wi-Fi scanning intentionally unimplemented.
+
+### Phase 1C — Wi-Fi Scan Acquisition
+
+- request a foreground Wi-Fi scan only after explicit user action;
+- receive Android scan-result availability broadcasts through a dynamic receiver;
+- map raw Android scan results into Android-independent observations;
+- preserve cached/previous observations when Android rejects a request or reports stale results;
+- keep RF/channel analysis, persistence and export intentionally unimplemented.
+
+### Phase 1D — RF Domain Interpretation
+
+- preserve raw scan observations separately from derived RF data;
+- interpret observed frequencies into 2.4 GHz, 5 GHz, 6 GHz, 60 GHz or unknown bands;
+- interpret primary channel, channel width, center frequencies and Wi-Fi standard where available;
+- keep overlap, interference, recommendations, persistence and export intentionally unimplemented.
+
+### Phase 1E — Spectrum Geometry and Channel Overlap
+
+- calculate nominal occupied frequency spans from interpreted RF data;
+- preserve 80+80 MHz as two independent segments with an unoccupied gap;
+- calculate geometric overlap bandwidth using MHz intervals;
+- keep interference analysis, scoring, recommendations and graphical channel views intentionally unimplemented.
+
+### Phase 1F — Wi-Fi Spectrum Visualization
+
+- render 2.4 GHz, 5 GHz and 6 GHz band-specific spectrum charts;
+- project frequency and RSSI into screen coordinates without deriving RF facts in Compose;
+- preserve 80+80 MHz as separate visual segments and 320 MHz as one contiguous span;
+- keep scoring, recommendations, automatic scanning and historical visualization intentionally unimplemented.
+
+### Phase 1H — Launcher Visual Identity
+
+- ship the Yeyecatl production adaptive launcher icon;
+- provide mask-safe foreground, background and themed monochrome layers;
+- keep splash-screen branding and further visual theming intentionally unimplemented.
+
 ### Phase 1 — Minimal Scanner
 
 - create Android project;
@@ -378,6 +449,49 @@ The project will document these boundaries rather than pretending the phone can 
 
 ---
 
+
+## Agent-Assisted Development
+
+Yeyecatl includes a repository-native agent system inspired by the **Cerberus** project pattern:
+
+```text
+AGENTS.md
+├── repository-wide engineering policy
+│
+.github/agents/
+├── product-owner
+├── architect
+├── wifi-domain
+├── developer + task-worker
+├── qa-engineer
+└── reviewer + specialized reviewers
+│
+.github/skills/
+├── android-platform
+├── wifi-scanning
+├── rf-analysis
+├── compose-ui
+├── architecture
+├── test-strategy
+├── security-privacy
+├── quality-gates
+├── logging
+├── makefile-workflow
+└── release
+```
+
+The agents do not replace project rules: `PROJECT.md` defines the product and objectives, `AGENTS.md` defines repository-wide operating rules, and skills provide focused technical policy that agents load according to the task.
+
+Useful inspection commands:
+
+```bash
+make agents-list
+make skills-list
+make agents-check
+```
+
+---
+
 ## Repository Direction
 
 A likely future repository organization is:
@@ -409,7 +523,15 @@ Current artifacts:
 - project identity defined;
 - initial logo created;
 - initial README created;
-- Android application scaffolding not yet created.
+- Phase 0 Android Wi-Fi platform contract documented;
+- Phase 0 observation model, scan-state model and ADRs accepted;
+- Phase 1A Android project foundation created;
+- Phase 1B Android Wi-Fi platform readiness created;
+- Phase 1C foreground Wi-Fi scan acquisition created.
+- Phase 1D pure RF interpretation created.
+- Phase 1E nominal spectrum geometry created.
+- Phase 1F spectrum visualization created.
+- Phase 1H adaptive launcher visual identity created.
 
 That separation is intentional: first define what the instrument should observe, then choose the exact implementation around the capabilities Android actually exposes.
 
