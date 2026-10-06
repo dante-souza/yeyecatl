@@ -52,6 +52,7 @@ import io.github.dante_souza.yeyecatl.platform.wifi.WifiDiscoveryPermissionStatu
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiHardwareStatus
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiPlatformReadiness
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiPowerStatus
+import io.github.dante_souza.yeyecatl.ui.signal.WifiSignalRankingCard
 import io.github.dante_souza.yeyecatl.ui.spectrum.WifiSpectrumChart
 import io.github.dante_souza.yeyecatl.ui.theme.YeyecatlTheme
 
@@ -229,6 +230,11 @@ private fun ScanResults(snapshot: WifiScanSnapshot?) {
         observations = snapshot.observations,
         band = selectedBand,
         modifier = Modifier.padding(top = 16.dp)
+    )
+
+    WifiSignalRankingCard(
+        observations = snapshot.observations,
+        modifier = Modifier.padding(top = 20.dp)
     )
 
     ReadinessRow("Observed networks", snapshot.observations.size.toString())
