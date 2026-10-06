@@ -65,6 +65,58 @@ class WifiSignalRankingTest {
         assertEquals(5, ranking.weakest.size)
     }
 
+    @Test
+    fun allScopePreservesCompleteSnapshotOrder() {
+        val observations = listOf(
+            observation("first", "00:00:00:00:00:01", -70),
+            observation("unknown", "00:00:00:00:00:02", null),
+            observation("third", "00:00:00:00:00:03", -40)
+        )
+
+        val selected = WifiSignalRanker.select(
+            observations = observations,
+            scope = WifiSignalScope.All
+        )
+
+        assertEquals(observations, selected)
+    }
+
+    @Test
+    fun strongestScopeReturnsOnlyTopFiveMeasurableObservations() {
+        val observations = (1..8).map { index ->
+            observation(
+                ssid = "network-$index",
+                bssid = "00:00:00:00:00:${index.toString().padStart(2, '0')}",
+                rssiDbm = -30 - index
+            )
+        } + observation("unknown", "00:00:00:00:00:99", null)
+
+        val selected = WifiSignalRanker.select(
+            observations = observations,
+            scope = WifiSignalScope.Strongest
+        )
+
+        assertEquals(listOf(-31, -32, -33, -34, -35), selected.map { it.rssiDbm })
+    }
+
+    @Test
+    fun weakestScopeReturnsOnlyBottomFiveMeasurableObservations() {
+        val observations = (1..8).map { index ->
+            observation(
+                ssid = "network-$index",
+                bssid = "00:00:00:00:00:${index.toString().padStart(2, '0')}",
+                rssiDbm = -30 - index
+            )
+        } + observation("unknown", "00:00:00:00:00:99", null)
+
+        val selected = WifiSignalRanker.select(
+            observations = observations,
+            scope = WifiSignalScope.Weakest
+        )
+
+        assertEquals(listOf(-38, -37, -36, -35, -34), selected.map { it.rssiDbm })
+    }
+
     private fun observation(
         ssid: String,
         bssid: String,
