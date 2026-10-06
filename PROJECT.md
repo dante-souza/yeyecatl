@@ -179,6 +179,7 @@ Phase 0 platform and architecture decisions are recorded in:
 - `docs/testing/android-device-validation.md`
 - `docs/testing/continuous-integration.md`
 - `docs/architecture/app-shell.md`
+- `docs/validation/phase-2zero/README.md`
 
 ## 5. Suggested Modules / Packages
 
@@ -236,7 +237,7 @@ Start simple. Split into Gradle modules only when build time, ownership, or depe
 
 **Phase 1I status:** implementation complete on the feature branch; final acceptance requires GitHub CI and Galaxy J8 validation.
 
-**Phase 2-zero status:** implementation in progress. This deliberately static pre-phase ranks the latest scan snapshot by RSSI and adds an `All / Strongest 5 / Weakest 5` spectrum-display scope for the selected band. The complete scan snapshot and diagnostic list remain unchanged; no temporal observation semantics are introduced.
+**Phase 2-zero status:** complete and physically validated on the Samsung Galaxy J8. The latest scan snapshot is ranked by RSSI and the spectrum can switch between `All / Strongest 5 / Weakest 5` within the selected band. The complete scan snapshot and diagnostic list remain unchanged; no temporal observation semantics were introduced.
 
 ## 8. Definition of Done
 
