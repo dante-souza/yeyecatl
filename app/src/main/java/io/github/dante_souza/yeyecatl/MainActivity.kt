@@ -10,6 +10,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiForegroundScanCadence
+import io.github.dante_souza.yeyecatl.platform.wifi.AndroidWifiScanCadenceScheduler
 import io.github.dante_souza.yeyecatl.platform.wifi.AndroidWifiScanRepository
 import io.github.dante_souza.yeyecatl.platform.wifi.AndroidWifiPlatformReadinessProvider
 import io.github.dante_souza.yeyecatl.platform.wifi.LocationServicesStatus
@@ -29,9 +31,16 @@ class MainActivity : ComponentActivity() {
     private val wifiScanRepository by lazy {
         AndroidWifiScanRepository(this, wifiReadinessProvider)
     }
+    private val wifiScanCadence by lazy {
+        WifiForegroundScanCadence(
+            requestScan = ::requestScan,
+            scheduler = AndroidWifiScanCadenceScheduler()
+        )
+    }
 
     private var permissionRequestAttempted by mutableStateOf(false)
     private var readiness by mutableStateOf(initialReadiness())
+    private var dynamicScanEnabled by mutableStateOf(false)
 
     private val discoveryPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -47,10 +56,14 @@ class MainActivity : ComponentActivity() {
         refreshReadiness()
         setContent {
             val scanState by wifiScanRepository.observeScanState().collectAsState()
+            val temporalHistory by wifiScanRepository.observeTemporalHistory().collectAsState()
             YeyecatlApp(
                 readiness = readiness,
                 scanState = scanState,
+                temporalHistory = temporalHistory,
+                dynamicScanEnabled = dynamicScanEnabled,
                 onRequestScan = ::requestScan,
+                onToggleDynamicScan = ::toggleDynamicScan,
                 onRequestDiscoveryPermission = ::requestDiscoveryPermission
             )
         }
@@ -59,6 +72,7 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         wifiScanRepository.start()
+        wifiScanCadence.enterForeground()
     }
 
     override fun onResume() {
@@ -67,6 +81,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
+        wifiScanCadence.leaveForeground()
         wifiScanRepository.stop()
         super.onStop()
     }
@@ -85,6 +100,11 @@ class MainActivity : ComponentActivity() {
         wifiScanRepository.requestScan()
     }
 
+    private fun toggleDynamicScan() {
+        dynamicScanEnabled = !dynamicScanEnabled
+        wifiScanCadence.setEnabled(dynamicScanEnabled)
+    }
+
     private fun refreshReadiness() {
         val shouldShowPermissionRationale = wifiReadinessProvider
             .discoveryRuntimePermissionNames()
@@ -94,6 +114,10 @@ class MainActivity : ComponentActivity() {
             permissionRequestAttempted = permissionRequestAttempted,
             shouldShowPermissionRationale = shouldShowPermissionRationale
         )
+        if (!readiness.isDiscoveryAllowed && dynamicScanEnabled) {
+            dynamicScanEnabled = false
+            wifiScanCadence.setEnabled(false)
+        }
     }
 
     private fun initialReadiness(): WifiPlatformReadiness =
