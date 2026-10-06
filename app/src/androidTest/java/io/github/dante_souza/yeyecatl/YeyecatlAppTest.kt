@@ -2,6 +2,7 @@ package io.github.dante_souza.yeyecatl
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
@@ -45,6 +46,44 @@ class YeyecatlAppTest {
         onNodeWithText("6 GHz").performClick()
         onNodeWithText("No 6 GHz access points observed in the latest scan.")
             .assertIsDisplayed()
+    }
+
+    @Test
+    fun spectrumSignalScopeFiltersLatestSnapshotWithoutChangingDiagnostics() = runComposeUiTest {
+        val observations = (1..7).map { index ->
+            observation(
+                ssid = "network-$index",
+                bssid = "00:00:00:00:00:${index.toString().padStart(2, '0')}",
+                rssiDbm = -30 - index
+            )
+        }
+
+        setContent {
+            YeyecatlApp(scanState = resultsState(observations))
+        }
+
+        onNodeWithText("Spectrum filter").assertIsDisplayed()
+        onNodeWithText("All").assertIsDisplayed()
+        onNodeWithText("Strongest 5").assertIsDisplayed()
+        onNodeWithText("Weakest 5").assertIsDisplayed()
+        onNodeWithContentDescription(
+            "2.4 GHz Wi-Fi spectrum chart with 7 observed access points"
+        ).assertIsDisplayed()
+
+        onNodeWithText("Strongest 5").performClick()
+        onNodeWithContentDescription(
+            "2.4 GHz Wi-Fi spectrum chart with 5 observed access points"
+        ).assertIsDisplayed()
+
+        onNodeWithText("Weakest 5").performClick()
+        onNodeWithContentDescription(
+            "2.4 GHz Wi-Fi spectrum chart with 5 observed access points"
+        ).assertIsDisplayed()
+
+        onNodeWithText("Observed networks").assertIsDisplayed()
+        onNodeWithText("7").assertIsDisplayed()
+        onNodeWithText("SSID: network-1", substring = true).assertIsDisplayed()
+        onNodeWithText("SSID: network-7", substring = true).assertIsDisplayed()
     }
 
     @Test
