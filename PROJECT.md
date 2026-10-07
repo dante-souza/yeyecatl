@@ -254,7 +254,7 @@ Start simple. Split into Gradle modules only when build time, ownership, or depe
 
 **Phase 2B.1 status:** current-snapshot filtering/sorting and the nearby-network presentation polish are physically accepted on the Samsung Galaxy J8. The list preserves independent band and SSID/BSSID filtering plus deterministic scan-order / strongest / weakest / SSID / channel sorting, while compact cards show SSID, BSSID, RSSI, band, channel and channel width. Cards can expand in place to reveal the raw Android capability string and same-SSID BSSID count without changing the underlying snapshot or Phase 2A temporal history. Additional per-network information remains intentionally deferred to later detail work.
 
-**Phase 2C.1 status:** implementation ready for physical validation. Nearby-network cards with a BSSID can select one exact access point and render current normalized/RF metadata, nominal spectrum geometry and truthful bounded Phase 2A retained-history context. Selection remains UI-only; no persistence, vendor lookup, scoring, recommendations or SSID-as-identity behavior is introduced.
+**Phase 2C.1 status:** physically accepted on the Samsung Galaxy J8. Nearby-network cards select one exact BSSID and render current normalized/RF metadata, nominal spectrum geometry and truthful bounded Phase 2A retained-history context. Physical evidence confirms the selected-card state, access-point detail panel, retained RSSI sample context, and preservation of the existing spectrum/history views. Selection remains UI-only; no persistence, vendor lookup, scoring, recommendations or SSID-as-identity behavior is introduced.
 
 ## 8. Definition of Done
 

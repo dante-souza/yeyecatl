@@ -1,0 +1,131 @@
+name: Archive Phase 2C.1 selection detail
+
+on:
+  push:
+    branches:
+      - docs/phase-2c1-j8-evidence
+    paths:
+      - "docs/validation/phase-2c1/yeyecatl-phase-2c1-j8-spectrum-history.jpg"
+      - "docs/validation/phase-2c1/yeyecatl-phase-2c1-j8-selection-detail.jpg"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  archive:
+    name: Build and publish Phase 2C.1 freeze
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+
+    env:
+      FREEZE_SHA: 0ee8f76a3f0cb048dca24d6d354e0d6ea75e3340
+      INTEGRATION_SHA: d1510fd648ef30a93103213c8b35f710786a1ce8
+      RELEASE_TAG: v0.1.0-phase2c1-selection-detail.1
+      APK_NAME: yeyecatl-v0.1.0-phase2c1-selection-detail.1-debug.apk
+      EVIDENCE_DIR: evidence/docs/validation/phase-2c1
+      SPECTRUM_IMAGE: yeyecatl-phase-2c1-j8-spectrum-history.jpg
+      DETAIL_IMAGE: yeyecatl-phase-2c1-j8-selection-detail.jpg
+
+    steps:
+      - name: Check out archaeological evidence branch
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: docs/phase-2c1-j8-evidence
+          path: evidence
+
+      - name: Check out frozen Phase 2C.1 implementation
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ env.FREEZE_SHA }}
+          path: source
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6.0.1
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Verify original J8 evidence
+        shell: bash
+        run: |
+          test -f "$EVIDENCE_DIR/$SPECTRUM_IMAGE"
+          test -f "$EVIDENCE_DIR/$DETAIL_IMAGE"
+          (
+            cd "$EVIDENCE_DIR"
+            sha256sum -c SHA256SUMS-images.txt
+          )
+
+      - name: Run frozen repository checks
+        shell: bash
+        run: |
+          cd source
+          make setup
+          make check
+
+      - name: Prepare archaeological release assets
+        shell: bash
+        run: |
+          mkdir -p release
+          cp source/app/build/outputs/apk/debug/app-debug.apk "release/$APK_NAME"
+          cp "$EVIDENCE_DIR/$SPECTRUM_IMAGE" "release/$SPECTRUM_IMAGE"
+          cp "$EVIDENCE_DIR/$DETAIL_IMAGE" "release/$DETAIL_IMAGE"
+          cp "$EVIDENCE_DIR/README.md" release/phase-2c1-validation-record.md
+
+          (
+            cd release
+            sha256sum               "$APK_NAME"               "$SPECTRUM_IMAGE"               "$DETAIL_IMAGE"               phase-2c1-validation-record.md               > SHA256SUMS.txt
+          )
+
+          cat > release/RELEASE_NOTES.md <<'EOF'
+          # Yeyecatl — Phase 2C.1 Selection + Detail Freeze
+
+          Archaeological prerelease preserving the physically accepted Phase 2C.1
+          BSSID-selection and access-point-detail milestone.
+
+          ## Frozen state
+
+          - Source freeze: `0ee8f76a3f0cb048dca24d6d354e0d6ea75e3340`
+          - Integration merge: `d1510fd648ef30a93103213c8b35f710786a1ce8`
+          - Phase: **2C.1 — Selection + detail model**
+          - Physical validation: **PASS**
+          - Validation device: Samsung Galaxy J8 / SM-J810M / Android 10
+          - Feature CI: **37603910672 — PASS**
+          - Integrated dev CI: **37607367544 — PASS**
+
+          ## Preserved behavior
+
+          - exact BSSID-anchored access-point selection
+          - visible selected-card state
+          - current SSID/BSSID/RSSI and RF metadata
+          - nominal spectrum geometry and completeness
+          - Android-reported capability string
+          - bounded retained RSSI sample count and history span
+          - existing spectrum and signal-history views preserved
+          - Phase 2B.1 More/Less diagnostic expansion preserved independently
+          - no persistence, OUI/vendor lookup, scoring, recommendations,
+            distance estimation or SSID-as-selection identity
+
+          ## Assets
+
+          - `yeyecatl-v0.1.0-phase2c1-selection-detail.1-debug.apk`
+          - `yeyecatl-phase-2c1-j8-spectrum-history.jpg`
+          - `yeyecatl-phase-2c1-j8-selection-detail.jpg`
+          - `phase-2c1-validation-record.md`
+          - `SHA256SUMS.txt`
+
+          This is an archaeological prerelease and preservation point.
+          EOF
+
+      - name: Publish archaeological prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$RELEASE_TAG"               --repo "$GITHUB_REPOSITORY"               --target "$FREEZE_SHA"               --title "Phase 2C.1 Selection + Detail Freeze — Galaxy J8"               --notes-file release/RELEASE_NOTES.md               --prerelease
+            gh release upload "$RELEASE_TAG"               --repo "$GITHUB_REPOSITORY"               "release/$APK_NAME"               "release/$SPECTRUM_IMAGE"               "release/$DETAIL_IMAGE"               release/phase-2c1-validation-record.md               release/SHA256SUMS.txt               --clobber
+          else
+            gh release create "$RELEASE_TAG"               --repo "$GITHUB_REPOSITORY"               --target "$FREEZE_SHA"               --title "Phase 2C.1 Selection + Detail Freeze — Galaxy J8"               --notes-file release/RELEASE_NOTES.md               --prerelease               "release/$APK_NAME"               "release/$SPECTRUM_IMAGE"               "release/$DETAIL_IMAGE"               release/phase-2c1-validation-record.md               release/SHA256SUMS.txt
+          fi
