@@ -34,6 +34,40 @@ class WifiFocusedSignalHistoryProjectionTest {
     }
 
     @Test
+    fun focusedViewportAdaptsToStrongJ8SignalWithoutGlobalMinus30Clamp() {
+        val points = WifiFocusedSignalHistoryProjection.points(
+            samples = listOf(
+                sample(rssiDbm = -22, observedAtMillis = 1_000L),
+                sample(rssiDbm = -41, observedAtMillis = 2_000L),
+                sample(rssiDbm = -33, observedAtMillis = 3_000L)
+            )
+        )
+
+        val viewport = WifiFocusedSignalHistoryProjection.viewport(points)
+
+        requireNotNull(viewport)
+        assertEquals(-50, viewport.minRssiDbm)
+        assertEquals(-20, viewport.maxRssiDbm)
+    }
+
+    @Test
+    fun focusedViewportKeepsAtLeastTwentyDbForNearlyFlatHistory() {
+        val points = WifiFocusedSignalHistoryProjection.points(
+            samples = listOf(
+                sample(rssiDbm = -35, observedAtMillis = 1_000L),
+                sample(rssiDbm = -33, observedAtMillis = 2_000L)
+            )
+        )
+
+        val viewport = WifiFocusedSignalHistoryProjection.viewport(points)
+
+        requireNotNull(viewport)
+        assertEquals(20, viewport.maxRssiDbm - viewport.minRssiDbm)
+        assertEquals(-40, viewport.minRssiDbm)
+        assertEquals(-20, viewport.maxRssiDbm)
+    }
+
+    @Test
     fun projectionKeepsNewestPointsWhenDisplayLimitIsSmallerThanRetainedHistory() {
         val samples = (1L..5L).map { index ->
             sample(
