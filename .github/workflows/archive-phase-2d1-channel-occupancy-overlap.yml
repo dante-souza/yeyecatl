@@ -57,9 +57,10 @@ jobs:
           cp source/app/build/outputs/apk/debug/app-debug.apk "release/$APK_NAME"
           cp "$EVIDENCE_DIR/README.md" release/phase-2d1-validation-record.md
           cp "$EVIDENCE_DIR/ORIGINAL-IMAGE-MANIFEST.md" release/ORIGINAL-IMAGE-MANIFEST.md
+          cp "$EVIDENCE_DIR/SHA256SUMS-images.txt" release/SHA256SUMS-images.txt
           (
             cd release
-            sha256sum "$APK_NAME" phase-2d1-validation-record.md ORIGINAL-IMAGE-MANIFEST.md > SHA256SUMS.txt
+            sha256sum "$APK_NAME" phase-2d1-validation-record.md ORIGINAL-IMAGE-MANIFEST.md SHA256SUMS-images.txt > SHA256SUMS.txt
           )
           cat > release/RELEASE_NOTES.md <<'EOF'
           # Yeyecatl — Phase 2D.1 Channel Occupancy + Overlap Freeze
@@ -93,7 +94,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          assets=(release/"$APK_NAME" release/phase-2d1-validation-record.md release/ORIGINAL-IMAGE-MANIFEST.md release/SHA256SUMS.txt)
+          assets=(release/"$APK_NAME" release/phase-2d1-validation-record.md release/ORIGINAL-IMAGE-MANIFEST.md release/SHA256SUMS-images.txt release/SHA256SUMS.txt)
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --target "$FREEZE_SHA" --title "Phase 2D.1 Channel Occupancy + Overlap Freeze — Galaxy J8" --notes-file release/RELEASE_NOTES.md --prerelease
             gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" "${assets[@]}" --clobber
