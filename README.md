@@ -547,6 +547,7 @@ Current artifacts:
 - Phase 2-zero static strongest/weakest signal ranking and `All / Strongest 5 / Weakest 5` spectrum filtering physically validated on the Galaxy J8.
 - Phase 2A foreground dynamic scanning physically validated on the Galaxy J8 with 30-second lifecycle-bound cadence and correct fresh/cached handling.
 - Phase 2A signal-over-time chart physically validated on the Galaxy J8; focused views now use an external legend to avoid overlapping SSID labels while preserving the current band and `All / Strongest 5 / Weakest 5` scope.
+- Phase 2B current-snapshot filtering/sorting implemented with independent band and SSID/BSSID filters plus scan-order, signal, SSID and channel sorting; J8 validation pending.
 
 That separation is intentional: first define what the instrument should observe, then choose the exact implementation around the capabilities Android actually exposes.
 

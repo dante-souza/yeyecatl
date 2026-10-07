@@ -250,6 +250,8 @@ Start simple. Split into Gradle modules only when build time, ownership, or depe
 
 **Phase 2A.3 status:** signal-over-time visualization physically validated on the Samsung Galaxy J8. The history chart follows the selected band and frozen `All / Strongest 5 / Weakest 5` latest-snapshot scope, draws retained BSSID RSSI samples over their real observation times, and introduces no smoothing, interpolation or persistence. A final readability refinement moves focused-series labels into a compact legend so traces remain readable on-device.
 
+**Phase 2B.1 status:** current-snapshot filtering/sorting and the nearby-network presentation polish are physically accepted on the Samsung Galaxy J8. The list preserves independent band and SSID/BSSID filtering plus deterministic scan-order / strongest / weakest / SSID / channel sorting, while compact cards show SSID, BSSID, RSSI, band, channel and channel width. Cards can expand in place to reveal the raw Android capability string and same-SSID BSSID count without changing the underlying snapshot or Phase 2A temporal history. Additional per-network information remains intentionally deferred to later detail work.
+
 ## 8. Definition of Done
 
 A feature is done only when:

@@ -20,6 +20,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -33,6 +34,9 @@ import io.github.dante_souza.yeyecatl.R
 import io.github.dante_souza.yeyecatl.domain.wifi.ObservedSsid
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiBand
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationQuery
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationQueryEngine
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationSort
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanBlockReason
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanFreshness
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanObservation
@@ -42,9 +46,6 @@ import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanState
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiSignalRanker
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiSignalScope
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiRfInterpreter
-import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumCompleteness
-import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumGeometry
-import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumSegment
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiTemporalObservationHistory
 import io.github.dante_souza.yeyecatl.platform.wifi.LocationServicesStatus
@@ -57,6 +58,9 @@ import io.github.dante_souza.yeyecatl.platform.wifi.WifiHardwareStatus
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiPlatformReadiness
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiPowerStatus
 import io.github.dante_souza.yeyecatl.ui.history.WifiSignalHistoryChart
+import io.github.dante_souza.yeyecatl.ui.networks.WifiObservationListItem
+import io.github.dante_souza.yeyecatl.ui.networks.WifiObservationQueryControls
+import io.github.dante_souza.yeyecatl.ui.networks.sameSsidBssidCounts
 import io.github.dante_souza.yeyecatl.ui.signal.WifiSignalRankingCard
 import io.github.dante_souza.yeyecatl.ui.spectrum.WifiSpectrumChart
 import io.github.dante_souza.yeyecatl.ui.theme.YeyecatlTheme
@@ -266,13 +270,33 @@ private fun ScanResults(
 
     var selectedBandName by rememberSaveable { mutableStateOf(WifiBand.Ghz2_4.name) }
     var selectedSignalScopeName by rememberSaveable { mutableStateOf(WifiSignalScope.All.name) }
+    var observationFilterText by rememberSaveable { mutableStateOf("") }
+    var observationBandName by rememberSaveable { mutableStateOf(ALL_BANDS_KEY) }
+    var observationSortName by rememberSaveable {
+        mutableStateOf(WifiObservationSort.PlatformOrder.name)
+    }
+
     val selectedBand = WifiBand.valueOf(selectedBandName)
     val selectedSignalScope = WifiSignalScope.valueOf(selectedSignalScopeName)
+    val observationBand = observationBandName
+        .takeUnless { it == ALL_BANDS_KEY }
+        ?.let(WifiBand::valueOf)
+    val observationSort = WifiObservationSort.valueOf(observationSortName)
+
     val spectrumObservations = spectrumObservations(
         observations = snapshot.observations,
         band = selectedBand,
         scope = selectedSignalScope
     )
+    val visibleObservations = WifiObservationQueryEngine.apply(
+        observations = snapshot.observations,
+        query = WifiObservationQuery(
+            band = observationBand,
+            text = observationFilterText,
+            sort = observationSort
+        )
+    )
+    val sameSsidCounts = sameSsidBssidCounts(snapshot.observations)
 
     BandSelector(
         selectedBand = selectedBand,
@@ -312,14 +336,63 @@ private fun ScanResults(
         modifier = Modifier.padding(top = 20.dp)
     )
 
+    Text(
+        text = "Nearby networks",
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.padding(top = 24.dp)
+    )
+    Text(
+        text = "Filter and sort only the latest scan list. Spectrum and temporal history remain unchanged.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 4.dp)
+    )
+    WifiObservationQueryControls(
+        text = observationFilterText,
+        selectedBand = observationBand,
+        selectedSort = observationSort,
+        onTextChange = { observationFilterText = it },
+        onBandSelected = {
+            observationBandName = it?.name ?: ALL_BANDS_KEY
+        },
+        onSortSelected = {
+            observationSortName = it.name
+        },
+        modifier = Modifier.padding(top = 12.dp)
+    )
+    Text(
+        text = "Showing ${visibleObservations.size} of ${snapshot.observations.size}",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 8.dp)
+    )
+
     ReadinessRow("Observed networks", snapshot.observations.size.toString())
+    ReadinessRow("Visible networks", visibleObservations.size.toString())
     ReadinessRow("Freshness", snapshot.freshness.label())
-    snapshot.observations.forEach { observation ->
+
+    if (visibleObservations.isEmpty()) {
         Text(
-            text = observation.rowText(),
+            text = "No networks match the current filters.",
             style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 8.dp)
         )
+    } else {
+        visibleObservations.forEachIndexed { index, observation ->
+            val observationKey = observation.bssid
+                ?: "${observation.ssid.displayText}:${observation.frequencyMhz}:$index"
+            key(observationKey) {
+                WifiObservationListItem(
+                    observation = observation,
+                    sameSsidBssidCount = observation.ssid.displayText
+                        ?.let { sameSsidCounts[it] }
+                        ?: 0,
+                    modifier = Modifier.padding(top = 10.dp)
+                )
+            }
+        }
     }
 }
 
@@ -517,29 +590,6 @@ private fun WifiScanFreshness.label(): String =
         WifiScanFreshness.Unknown -> "Unknown"
     }
 
-private fun WifiScanObservation.rowText(): String {
-    val ssidText = ssid.displayText ?: if (ssid.isHidden) {
-        "<hidden>"
-    } else {
-        "<unavailable>"
-    }
-    val rf = WifiRfInterpreter.interpret(this)
-    val footprint = WifiSpectrumGeometry.footprint(rf)
-    return listOf(
-        "SSID: $ssidText",
-        "BSSID: ${bssid ?: "<no BSSID>"}",
-        "RSSI: ${rssiDbm?.let { "$it dBm" } ?: "?"}",
-        "Band: ${rf.band.label()}",
-        "Channel: ${rf.primaryChannel?.toString() ?: "unknown"}",
-        "Primary: ${frequencyMhz?.let { "$it MHz" } ?: "unknown"}",
-        "Width: ${rf.channelWidth.label()}",
-        "Center: ${centerFrequency0Mhz?.let { "$it MHz" } ?: "unknown"}",
-        "Span: ${footprint.spanText()}",
-        "Geometry: ${footprint.completeness.label()}",
-        "Standard: ${rf.wifiStandard.label()}"
-    ).joinToString(separator = "  ")
-}
-
 private fun io.github.dante_souza.yeyecatl.domain.wifi.WifiBand.label(): String =
     when (this) {
         io.github.dante_souza.yeyecatl.domain.wifi.WifiBand.Ghz2_4 -> "2.4 GHz"
@@ -547,46 +597,6 @@ private fun io.github.dante_souza.yeyecatl.domain.wifi.WifiBand.label(): String 
         io.github.dante_souza.yeyecatl.domain.wifi.WifiBand.Ghz6 -> "6 GHz"
         io.github.dante_souza.yeyecatl.domain.wifi.WifiBand.Ghz60 -> "60 GHz"
         io.github.dante_souza.yeyecatl.domain.wifi.WifiBand.Unknown -> "Unknown"
-    }
-
-private fun io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.label(): String =
-    when (this) {
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Mhz20 -> "20 MHz"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Mhz40 -> "40 MHz"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Mhz80 -> "80 MHz"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Mhz160 -> "160 MHz"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Mhz80Plus80 -> "80+80 MHz"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Mhz320 -> "320 MHz"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Unknown -> "Unknown"
-    }
-
-private fun io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.label(): String =
-    when (this) {
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Legacy -> "Legacy"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Ieee80211n -> "802.11n"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Ieee80211ac -> "802.11ac"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Ieee80211ax -> "802.11ax"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Ieee80211ad -> "802.11ad"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Ieee80211be -> "802.11be"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Unknown -> "Unknown"
-    }
-
-private fun io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumFootprint.spanText(): String =
-    if (segments.isEmpty()) {
-        "unavailable"
-    } else {
-        segments.joinToString(separator = "; ") { it.spanText() }
-    }
-
-private fun WifiSpectrumSegment.spanText(): String =
-    "${lowerFrequencyMhz}-${upperFrequencyMhz} MHz"
-
-private fun WifiSpectrumCompleteness.label(): String =
-    when (this) {
-        WifiSpectrumCompleteness.Complete -> "Complete"
-        WifiSpectrumCompleteness.Partial -> "Partial"
-        WifiSpectrumCompleteness.Unavailable -> "Unavailable"
-        WifiSpectrumCompleteness.Inconsistent -> "Inconsistent"
     }
 
 private fun Boolean.yesNo(): String =
@@ -701,3 +711,5 @@ private fun previewObservation(
 private fun YeyecatlPlaceholderPreview() {
     YeyecatlApp(scanState = previewScanState())
 }
+
+private const val ALL_BANDS_KEY = "all"
