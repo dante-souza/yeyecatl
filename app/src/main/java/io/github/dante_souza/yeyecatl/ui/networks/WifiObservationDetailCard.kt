@@ -70,17 +70,18 @@ fun WifiObservationDetailCard(
                 }
             }
 
-            if (!detail.observedInLatestSnapshot) {
-                Text(
-                    text = "Not seen in latest scan · showing last known observation",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.tertiary
-                )
-                DetailRow(
-                    label = "Last seen",
-                    value = elapsedLabel(timeSinceLastSeenMillis)
-                )
-            }
+            DetailRow(
+                label = "Latest scan",
+                value = if (detail.observedInLatestSnapshot) "Seen" else "Not seen"
+            )
+            DetailRow(
+                label = "Last seen",
+                value = if (detail.observedInLatestSnapshot) {
+                    "now"
+                } else {
+                    elapsedLabel(timeSinceLastSeenMillis)
+                }
+            )
 
             DetailRow(
                 label = "BSSID",
@@ -88,7 +89,7 @@ fun WifiObservationDetailCard(
                 monospace = true
             )
             DetailRow(
-                label = if (detail.observedInLatestSnapshot) "RSSI" else "Last observed RSSI",
+                label = "Observed RSSI",
                 value = observation.rssiDbm?.let { "$it dBm" } ?: "Unavailable"
             )
             DetailRow(
