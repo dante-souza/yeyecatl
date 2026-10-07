@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -283,6 +285,9 @@ private fun ScanResults(
     }
     var selectedBssid by remember { mutableStateOf<String?>(null) }
     var focusedDetail by remember { mutableStateOf<WifiObservationDetail?>(null) }
+    val focusedSelectionBringIntoViewRequester = remember {
+        BringIntoViewRequester()
+    }
 
     val selectedBand = WifiBand.valueOf(selectedBandName)
     val selectedSignalScope = WifiSignalScope.valueOf(selectedSignalScopeName)
@@ -317,6 +322,12 @@ private fun ScanResults(
 
     val selectedDetail = focusedDetail
         ?.takeIf { it.selection.bssid == selectedBssid }
+
+    LaunchedEffect(selectedDetail?.selection?.bssid) {
+        if (selectedDetail != null) {
+            focusedSelectionBringIntoViewRequester.bringIntoView()
+        }
+    }
 
     BandSelector(
         selectedBand = selectedBand,
@@ -397,7 +408,9 @@ private fun ScanResults(
             text = "Focused selection",
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 14.dp)
+            modifier = Modifier
+                .padding(top = 14.dp)
+                .bringIntoViewRequester(focusedSelectionBringIntoViewRequester)
         )
         WifiObservationDetailCard(
             detail = selectedDetail,
