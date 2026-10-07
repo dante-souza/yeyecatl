@@ -34,7 +34,9 @@ import io.github.dante_souza.yeyecatl.R
 import io.github.dante_souza.yeyecatl.domain.wifi.ObservedSsid
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiBand
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationDetailResolver
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationQuery
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationSelection
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationQueryEngine
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationSort
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanBlockReason
@@ -58,6 +60,7 @@ import io.github.dante_souza.yeyecatl.platform.wifi.WifiHardwareStatus
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiPlatformReadiness
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiPowerStatus
 import io.github.dante_souza.yeyecatl.ui.history.WifiSignalHistoryChart
+import io.github.dante_souza.yeyecatl.ui.networks.WifiObservationDetailCard
 import io.github.dante_souza.yeyecatl.ui.networks.WifiObservationListItem
 import io.github.dante_souza.yeyecatl.ui.networks.WifiObservationQueryControls
 import io.github.dante_souza.yeyecatl.ui.networks.sameSsidBssidCounts
@@ -275,6 +278,7 @@ private fun ScanResults(
     var observationSortName by rememberSaveable {
         mutableStateOf(WifiObservationSort.PlatformOrder.name)
     }
+    var selectedBssid by rememberSaveable { mutableStateOf<String?>(null) }
 
     val selectedBand = WifiBand.valueOf(selectedBandName)
     val selectedSignalScope = WifiSignalScope.valueOf(selectedSignalScopeName)
@@ -297,6 +301,13 @@ private fun ScanResults(
         )
     )
     val sameSsidCounts = sameSsidBssidCounts(snapshot.observations)
+    val selectedDetail = selectedBssid?.let { bssid ->
+        WifiObservationDetailResolver.resolve(
+            selection = WifiObservationSelection(bssid),
+            snapshot = snapshot,
+            history = temporalHistory
+        )
+    }
 
     BandSelector(
         selectedBand = selectedBand,
@@ -384,13 +395,26 @@ private fun ScanResults(
             val observationKey = observation.bssid
                 ?: "${observation.ssid.displayText}:${observation.frequencyMhz}:$index"
             key(observationKey) {
+                val isSelected = observation.bssid != null &&
+                    observation.bssid == selectedBssid
                 WifiObservationListItem(
                     observation = observation,
                     sameSsidBssidCount = observation.ssid.displayText
                         ?.let { sameSsidCounts[it] }
                         ?: 0,
+                    selected = isSelected,
+                    onSelect = observation.bssid?.let { bssid ->
+                        { selectedBssid = bssid }
+                    },
                     modifier = Modifier.padding(top = 10.dp)
                 )
+                if (isSelected && selectedDetail != null) {
+                    WifiObservationDetailCard(
+                        detail = selectedDetail,
+                        onClearSelection = { selectedBssid = null },
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                }
             }
         }
     }

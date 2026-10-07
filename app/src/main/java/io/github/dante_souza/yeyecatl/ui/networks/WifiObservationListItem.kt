@@ -1,5 +1,7 @@
 package io.github.dante_souza.yeyecatl.ui.networks
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -17,6 +19,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -27,6 +31,8 @@ import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanObservation
 fun WifiObservationListItem(
     observation: WifiScanObservation,
     sameSsidBssidCount: Int,
+    selected: Boolean = false,
+    onSelect: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val presentation = WifiObservationPresenter.present(observation)
@@ -37,10 +43,27 @@ fun WifiObservationListItem(
         mutableStateOf(false)
     }
 
+    val selectionModifier = if (onSelect != null && observation.bssid != null) {
+        Modifier
+            .semantics {
+                contentDescription = "Select access point ${observation.bssid}"
+            }
+            .clickable(onClick = onSelect)
+    } else {
+        Modifier
+    }
+
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .then(selectionModifier),
         shape = MaterialTheme.shapes.medium,
-        tonalElevation = 1.dp
+        border = if (selected) {
+            BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+        } else {
+            null
+        },
+        tonalElevation = if (selected) 3.dp else 1.dp
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
@@ -71,12 +94,24 @@ fun WifiObservationListItem(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                Text(
-                    text = presentation.rssiText,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = presentation.rssiText,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    if (selected) {
+                        Text(
+                            text = "Selected",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
             }
 
             Row(
