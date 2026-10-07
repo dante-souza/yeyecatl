@@ -24,6 +24,7 @@ class WifiTemporalObservationTest {
             snapshot = snapshot
         )
 
+        assertEquals(1, history.freshSnapshotCount)
         assertEquals(
             listOf(
                 WifiSignalSample(
@@ -58,6 +59,7 @@ class WifiTemporalObservationTest {
             snapshot = second
         )
 
+        assertEquals(2, afterSecond.freshSnapshotCount)
         assertEquals(
             listOf(-55, -48),
             afterSecond.samplesFor("00:00:00:00:00:01").map { it.rssiDbm }
@@ -159,6 +161,7 @@ class WifiTemporalObservationTest {
         val result = WifiTemporalObservationAccumulator.append(current, cached)
 
         assertSame(current, result)
+        assertEquals(current.freshSnapshotCount, result.freshSnapshotCount)
     }
 
     @Test
@@ -172,6 +175,7 @@ class WifiTemporalObservationTest {
         val result = WifiTemporalObservationAccumulator.append(current, unknown)
 
         assertSame(current, result)
+        assertEquals(current.freshSnapshotCount, result.freshSnapshotCount)
     }
 
     private fun snapshot(
