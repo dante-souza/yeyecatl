@@ -101,12 +101,12 @@ from physical testing is:
 ## Frozen feature head
 
 ```text
-00f2240a33cfa02837bb7f8f118cbe104d42c96c
-build: add explicit J8 and G41 device helpers
+79ed19442c39f20929efa308448ee7cfe1873c37
+build: auto-detect lab devices without storing serials
 ```
 
 Final feature-head GitHub Actions validation:
 
 ```text
-37679929306 — PASS
+37680265241 — PASS
 ```
