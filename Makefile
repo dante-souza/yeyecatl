@@ -9,8 +9,11 @@ endif
 ADB ?= adb
 APP_ID := io.github.dante_souza.yeyecatl
 TEST_APP_ID := $(APP_ID).test
+J8_SERIAL ?= 38c19745
+G41_SERIAL ?= 0077860711
+DEBUG_APK := app/build/outputs/apk/debug/app-debug.apk
 
-.PHONY: help setup build assemble-debug test unit-test android-test android-test-build android-test-install android-test-diagnostics lint check clean install-debug open-app adb-devices device-info device-smoke logcat app-logcat device-diagnostics agents-list skills-list agents-check
+.PHONY: help setup build assemble-debug test unit-test android-test android-test-build android-test-install android-test-diagnostics lint check clean install-debug install-debug-j8 install-debug-g41 open-app open-app-j8 open-app-g41 adb-devices device-info device-info-j8 device-info-g41 device-smoke device-smoke-j8 device-smoke-g41 logcat app-logcat device-diagnostics agents-list skills-list agents-check
 
 help:
 	@printf '%s\n' \
@@ -29,10 +32,18 @@ help:
 	  '  make check         Run build, tests, lint and agent validation' \
 	  '  make clean         Remove Gradle build outputs' \
 	  '  make install-debug Install debug APK with adb' \
+	  '  make install-debug-j8 Install debug APK on Galaxy J8' \
+	  '  make install-debug-g41 Install debug APK on Moto G41' \
 	  '  make open-app      Launch the already-installed Yeyecatl app' \
+	  '  make open-app-j8   Launch Yeyecatl on Galaxy J8' \
+	  '  make open-app-g41  Launch Yeyecatl on Moto G41' \
 	  '  make adb-devices   List connected adb devices' \
 	  '  make device-info   Show connected device/app environment' \
+	  '  make device-info-j8 Show Galaxy J8 device/app environment' \
+	  '  make device-info-g41 Show Moto G41 device/app environment' \
 	  '  make device-smoke  Install and launch the debug app' \
+	  '  make device-smoke-j8 Build, install and launch on Galaxy J8' \
+	  '  make device-smoke-g41 Build, install and launch on Moto G41' \
 	  '  make logcat        Stream device logcat' \
 	  '  make app-logcat    Stream Yeyecatl scan diagnostics' \
 	  '  make device-diagnostics Write sanitized device diagnostics' \
@@ -106,8 +117,22 @@ clean:
 install-debug:
 	@$(GRADLE) :app:installDebug
 
+install-debug-j8: assemble-debug
+	@$(ADB) -s $(J8_SERIAL) install --no-streaming -r $(DEBUG_APK)
+
+install-debug-g41: assemble-debug
+	@$(ADB) -s $(G41_SERIAL) install --no-streaming -r $(DEBUG_APK)
+
 open-app:
 	@$(ADB) shell am start -n $(APP_ID)/.MainActivity
+
+open-app-j8:
+	@$(ADB) -s $(J8_SERIAL) shell am force-stop $(APP_ID)
+	@$(ADB) -s $(J8_SERIAL) shell am start -n $(APP_ID)/.MainActivity
+
+open-app-g41:
+	@$(ADB) -s $(G41_SERIAL) shell am force-stop $(APP_ID)
+	@$(ADB) -s $(G41_SERIAL) shell am start -n $(APP_ID)/.MainActivity
 
 adb-devices:
 	@$(ADB) devices
@@ -123,7 +148,35 @@ device-info:
 	@$(ADB) shell pm list features | grep 'android.hardware.wifi' || true
 	@$(ADB) shell dumpsys package $(APP_ID) | grep -E 'versionName|versionCode' || true
 
+device-info-j8:
+	@printf 'serial=$(J8_SERIAL)\n'
+	@printf 'manufacturer='; $(ADB) -s $(J8_SERIAL) shell getprop ro.product.manufacturer
+	@printf 'model='; $(ADB) -s $(J8_SERIAL) shell getprop ro.product.model
+	@printf 'android_release='; $(ADB) -s $(J8_SERIAL) shell getprop ro.build.version.release
+	@printf 'api_level='; $(ADB) -s $(J8_SERIAL) shell getprop ro.build.version.sdk
+	@printf 'abi='; $(ADB) -s $(J8_SERIAL) shell getprop ro.product.cpu.abi
+	@$(ADB) -s $(J8_SERIAL) shell wm size
+	@$(ADB) -s $(J8_SERIAL) shell wm density
+	@$(ADB) -s $(J8_SERIAL) shell pm list features | grep 'android.hardware.wifi' || true
+	@$(ADB) -s $(J8_SERIAL) shell dumpsys package $(APP_ID) | grep -E 'versionName|versionCode' || true
+
+device-info-g41:
+	@printf 'serial=$(G41_SERIAL)\n'
+	@printf 'manufacturer='; $(ADB) -s $(G41_SERIAL) shell getprop ro.product.manufacturer
+	@printf 'model='; $(ADB) -s $(G41_SERIAL) shell getprop ro.product.model
+	@printf 'android_release='; $(ADB) -s $(G41_SERIAL) shell getprop ro.build.version.release
+	@printf 'api_level='; $(ADB) -s $(G41_SERIAL) shell getprop ro.build.version.sdk
+	@printf 'abi='; $(ADB) -s $(G41_SERIAL) shell getprop ro.product.cpu.abi
+	@$(ADB) -s $(G41_SERIAL) shell wm size
+	@$(ADB) -s $(G41_SERIAL) shell wm density
+	@$(ADB) -s $(G41_SERIAL) shell pm list features | grep 'android.hardware.wifi' || true
+	@$(ADB) -s $(G41_SERIAL) shell dumpsys package $(APP_ID) | grep -E 'versionName|versionCode' || true
+
 device-smoke: install-debug open-app
+
+device-smoke-j8: install-debug-j8 open-app-j8
+
+device-smoke-g41: install-debug-g41 open-app-g41
 
 logcat:
 	@$(ADB) logcat
