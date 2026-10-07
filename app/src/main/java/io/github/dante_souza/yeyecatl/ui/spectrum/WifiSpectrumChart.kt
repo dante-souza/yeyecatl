@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
@@ -75,7 +76,7 @@ fun WifiSpectrumChart(
     }
 
     val textMeasurer = rememberTextMeasurer()
-    val outlineColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
+    val outlineColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.24f)
     val axisColor = MaterialTheme.colorScheme.onSurfaceVariant
     val textColor = MaterialTheme.colorScheme.onSurface
     val palette = listOf(
@@ -112,9 +113,9 @@ fun WifiSpectrumChart(
         val plotWidth = plotRight - plotLeft
         val plotHeight = plotBottom - plotTop
         val labelStyle = TextStyle(color = textColor, fontSize = 10.sp)
-        val smallLabelStyle = TextStyle(color = textColor, fontSize = 9.sp)
+        val smallLabelStyle = TextStyle(color = textColor, fontSize = 10.sp)
 
-        for (rssi in -30 downTo -90 step 10) {
+        for (rssi in -30 downTo -100 step 10) {
             val y = plotTop + WifiSpectrumProjection.rssiToY(rssi, viewport, plotHeight)
             drawLine(outlineColor, Offset(plotLeft, y), Offset(plotRight, y), strokeWidth = 1f)
             drawText(
@@ -193,18 +194,6 @@ fun WifiSpectrumChart(
                         }
                         drawPath(envelope, baseColor.copy(alpha = fillAlpha))
                         drawPath(envelope, color, style = Stroke(width = strokeWidth))
-                        drawText(
-                            textMeasurer = textMeasurer,
-                            text = observation.label,
-                            topLeft = Offset(centerX - 24.dp.toPx(), topY - 18.dp.toPx()),
-                            style = smallLabelStyle.copy(
-                                color = if (isDimmed) {
-                                    textColor.copy(alpha = 0.45f)
-                                } else {
-                                    textColor
-                                }
-                            )
-                        )
                     }
                     WifiSpectrumCompleteness.Partial -> {
                         drawLine(
@@ -214,22 +203,59 @@ fun WifiSpectrumChart(
                             strokeWidth = strokeWidth,
                             pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f))
                         )
-                        drawText(
-                            textMeasurer = textMeasurer,
-                            text = observation.label,
-                            topLeft = Offset(centerX + 4.dp.toPx(), topY),
-                            style = smallLabelStyle.copy(
-                                color = if (isDimmed) {
-                                    textColor.copy(alpha = 0.45f)
-                                } else {
-                                    textColor
-                                }
-                            )
-                        )
                     }
                     WifiSpectrumCompleteness.Unavailable,
                     WifiSpectrumCompleteness.Inconsistent -> Unit
                 }
+            }
+        }
+
+        // Keep labels legible in dense clusters. Selected AP wins; otherwise
+        // only the strongest APs receive labels and labels never overlap.
+        val occupiedLabels = mutableListOf<Rect>()
+        val labelCandidates = visualObservations
+            .sortedWith(
+                compareByDescending<WifiSpectrumVisualObservation> {
+                    selectedBssid != null && it.bssid == selectedBssid
+                }.thenByDescending { it.rssiDbm }.thenBy { it.colorKey }
+            )
+            .filter { it.footprint.segments.isNotEmpty() }
+            .take(MAX_SPECTRUM_LABELS)
+        labelCandidates.forEach { observation ->
+            val segment = observation.footprint.segments.first()
+            val centerMhz = (segment.lowerFrequencyMhz + segment.upperFrequencyMhz) / 2
+            val x = plotLeft + WifiSpectrumProjection.frequencyToX(centerMhz, viewport, plotWidth)
+            val previousRssi = previousRssiByKey[observation.colorKey] ?: observation.rssiDbm
+            val animatedRssi = previousRssi +
+                ((observation.rssiDbm - previousRssi) * snapshotTransition.value)
+            val y = plotTop + WifiSpectrumProjection.rssiToY(
+                animatedRssi.toInt(), viewport, plotHeight
+            )
+            val isSelected = selectedBssid != null && observation.bssid == selectedBssid
+            val label = observation.label.take(MAX_LABEL_CHARACTERS)
+            val style = smallLabelStyle.copy(
+                color = if (isSelected) axisColor else textColor
+            )
+            val measured = textMeasurer.measure(label, style = style)
+            val width = measured.size.width.toFloat()
+            val height = measured.size.height.toFloat()
+            val preferredX = (x - width / 2f).coerceIn(plotLeft, (plotRight - width).coerceAtLeast(plotLeft))
+            val offsets = listOf(-height - 5.dp.toPx(), 5.dp.toPx(), -2f * height - 9.dp.toPx())
+            val placement = offsets.firstNotNullOfOrNull { offset ->
+                val top = y + offset
+                val candidate = Rect(preferredX, top, preferredX + width, top + height)
+                if (candidate.top >= plotTop && candidate.bottom <= plotBottom &&
+                    occupiedLabels.none { it.overlaps(candidate) }
+                ) candidate else null
+            }
+            if (placement != null) {
+                occupiedLabels.add(placement)
+                drawText(
+                    textMeasurer = textMeasurer,
+                    text = label,
+                    topLeft = Offset(placement.left, placement.top),
+                    style = style
+                )
             }
         }
     }
@@ -248,3 +274,6 @@ private fun WifiBand.label(): String =
     }
 
 private const val SPECTRUM_TRANSITION_MILLIS = 450
+
+private const val MAX_SPECTRUM_LABELS = 6
+private const val MAX_LABEL_CHARACTERS = 18
