@@ -5,8 +5,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ExperimentalTestApi
-import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -318,7 +318,7 @@ class YeyecatlAppTest {
         onNodeWithText("Retained history span").assertIsDisplayed()
         onNodeWithText("2.0 s").assertIsDisplayed()
         onNodeWithText("Clear selection").performClick()
-        onNodeWithText("Selected access point").assertDoesNotExist()
+        onNodeWithText("Selected access point").assertIsNotDisplayed()
     }
 
     @Test
