@@ -62,6 +62,39 @@ class YeyecatlAppTest {
     }
 
     @Test
+    fun dynamicPollingContainsRejectedRequestStatusWithoutGlobalErrorCopy() = runComposeUiTest {
+        val snapshot = WifiScanSnapshot(
+            observations = listOf(observation()),
+            freshness = WifiScanFreshness.Fresh,
+            source = WifiScanResultSource.ApplicationRequest,
+            resultsUpdated = true,
+            receivedAtMillis = 1_000L
+        )
+        val state = WifiScanState.RequestRejected(
+            message = "Android did not accept the scan request. Existing results may be cached.",
+            latestSnapshot = snapshot
+        )
+
+        setContent {
+            YeyecatlApp(
+                scanState = state,
+                dynamicScanEnabled = true,
+                dynamicScanRequestCount = 12,
+                dynamicScanFreshUpdateCount = 3
+            )
+        }
+
+        onNodeWithText("Results available").assertIsDisplayed()
+        onNodeWithText(
+            "Android did not accept the scan request. Existing results may be cached."
+        ).assertIsNotDisplayed()
+        onNodeWithText(
+            "Last request throttled/rejected by Android",
+            substring = true
+        ).assertIsDisplayed()
+    }
+
+    @Test
     fun pollingIntervalSelectorUpdatesLiveDynamicCadence() = runComposeUiTest {
         setContent {
             var intervalMillis by remember { mutableLongStateOf(5_000L) }
