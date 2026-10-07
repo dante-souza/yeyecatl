@@ -284,7 +284,7 @@ private fun ScanResults(
     var observationSortName by rememberSaveable {
         mutableStateOf(WifiObservationSort.PlatformOrder.name)
     }
-    var selectedBssid by remember { mutableStateOf<String?>(null) }
+    var selectedBssid by rememberSaveable { mutableStateOf<String?>(null) }
     var focusedDetail by remember { mutableStateOf<WifiObservationDetail?>(null) }
     val focusedSelectionBringIntoViewRequester = remember {
         BringIntoViewRequester()
@@ -341,12 +341,14 @@ private fun ScanResults(
     WifiSpectrumChart(
         observations = spectrumObservations,
         band = selectedBand,
+        selectedBssid = selectedBssid,
         modifier = Modifier.padding(top = 16.dp)
     )
 
     WifiChannelOccupancyCard(
         observations = snapshot.observations,
         band = selectedBand,
+        selectedBssid = selectedBssid,
         modifier = Modifier.padding(top = 20.dp)
     )
 
@@ -366,6 +368,7 @@ private fun ScanResults(
         history = temporalHistory,
         observations = spectrumObservations,
         band = selectedBand,
+        selectedBssid = selectedBssid,
         modifier = Modifier.padding(top = 8.dp)
     )
 
@@ -381,7 +384,7 @@ private fun ScanResults(
         modifier = Modifier.padding(top = 24.dp)
     )
     Text(
-        text = "Filter and sort only the latest scan list. Spectrum and temporal history remain unchanged.",
+        text = "Filter and sort only the latest scan list. Selecting a BSSID synchronizes the cross-view highlight.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(top = 4.dp)
@@ -447,7 +450,21 @@ private fun ScanResults(
                         ?: 0,
                     selected = isSelected,
                     onSelect = observation.bssid?.let { bssid ->
-                        { selectedBssid = bssid }
+                        {
+                            selectedBssid = bssid
+                            when (val observationBand =
+                                WifiRfInterpreter.interpret(observation).band
+                            ) {
+                                WifiBand.Ghz2_4,
+                                WifiBand.Ghz5,
+                                WifiBand.Ghz6 -> {
+                                    selectedBandName = observationBand.name
+                                    selectedSignalScopeName = WifiSignalScope.All.name
+                                }
+                                WifiBand.Ghz60,
+                                WifiBand.Unknown -> Unit
+                            }
+                        }
                     },
                     modifier = Modifier.padding(top = 10.dp)
                 )
