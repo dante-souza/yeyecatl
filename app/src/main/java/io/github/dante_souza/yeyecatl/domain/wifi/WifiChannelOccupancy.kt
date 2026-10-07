@@ -33,6 +33,13 @@ data class WifiChannelOccupancyOverview(
 
     val overlappingPairCount: Int
         get() = overlappingPairs.size
+
+    val averageOverlappingNeighborsPerAccessPoint: Double
+        get() = if (observedAccessPointCount == 0) {
+            0.0
+        } else {
+            (overlappingPairCount * 2.0) / observedAccessPointCount
+        }
 }
 
 object WifiChannelOccupancyAnalyzer {
