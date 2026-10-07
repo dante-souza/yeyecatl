@@ -49,6 +49,7 @@ class MainActivity : ComponentActivity() {
     private var readiness by mutableStateOf(initialReadiness())
     private var dynamicScanEnabled by mutableStateOf(false)
     private var dynamicScanRequestCount by mutableIntStateOf(0)
+    private var dynamicScanFreshHistoryBaseline by mutableIntStateOf(0)
     private var dynamicScanIntervalMillis by mutableLongStateOf(
         WifiPollingIntervalPolicy.DEFAULT_INTERVAL_MILLIS
     )
@@ -87,6 +88,9 @@ class MainActivity : ComponentActivity() {
                 temporalHistory = temporalHistory,
                 dynamicScanEnabled = dynamicScanEnabled,
                 dynamicScanRequestCount = dynamicScanRequestCount,
+                dynamicScanFreshUpdateCount =
+                    (temporalHistory.freshSnapshotCount - dynamicScanFreshHistoryBaseline)
+                        .coerceAtLeast(0),
                 dynamicScanIntervalMillis = dynamicScanIntervalMillis,
                 onDynamicScanIntervalSelected = ::selectDynamicScanInterval,
                 onRequestScan = ::requestScan,
@@ -166,6 +170,8 @@ class MainActivity : ComponentActivity() {
         val nextEnabled = !dynamicScanEnabled
         if (nextEnabled) {
             dynamicScanRequestCount = 0
+            dynamicScanFreshHistoryBaseline =
+                wifiScanRepository.observeTemporalHistory().value.freshSnapshotCount
         }
         dynamicScanEnabled = nextEnabled
         wifiScanCadence.setEnabled(nextEnabled)
