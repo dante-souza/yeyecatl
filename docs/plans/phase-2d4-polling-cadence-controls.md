@@ -85,6 +85,27 @@ Required behavior:
 - enable behavior remains: first dynamic request is immediate;
 - foreground leave/re-enter behavior remains intact.
 
+## Physical-test finding — analyzer motion and temporal history
+
+Moto G41 testing showed that request-driven redraws alone do not feel like a
+conventional analyzer and that sparse Fresh results can make temporal lines look
+broken or misleading.
+
+Phase 2D.4 therefore distinguishes visual continuity from RF observation:
+
+- spectrum envelopes animate for a short transition between accepted snapshots;
+- no intermediate animation frame is recorded as an RF observation;
+- signal history uses a fixed two-minute rolling wall-clock viewport;
+- the history viewport advances every second even when Android does not provide
+  a fresh scan;
+- long gaps between fresh samples break the line instead of drawing a false
+  continuous bridge;
+- individual samples remain visible as points;
+- history still follows the active band and signal-scope selection.
+
+This gives the app the visual motion expected from an analyzer without
+fabricating scan data.
+
 ## Physical-test finding — splash visibility and rejection presentation
 
 Moto G41 testing on fast startup made the branded system splash effectively
