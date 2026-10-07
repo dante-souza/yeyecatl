@@ -535,6 +535,7 @@ private fun ScanResults(
         observations = spectrumObservations,
         band = selectedBand,
         selectedBssid = selectedBssid,
+        pollingIntervalMillis = dynamicScanIntervalMillis,
         modifier = Modifier.padding(top = 8.dp)
     )
 
