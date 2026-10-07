@@ -1,6 +1,8 @@
 package io.github.dante_souza.yeyecatl.ui.history
 
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiSignalSample
+import kotlin.math.ceil
+import kotlin.math.floor
 
 data class WifiFocusedSignalHistorySummary(
     val sampleCount: Int,
@@ -15,6 +17,8 @@ data class WifiFocusedSignalHistorySummary(
 object WifiFocusedSignalHistoryProjection {
     const val DEFAULT_MAX_POINTS: Int = 60
     private const val SINGLE_POINT_WINDOW_MILLIS = 30_000L
+    private const val RSSI_GRID_STEP_DB = 10
+    private const val MIN_RSSI_SPAN_DB = 20
 
     fun points(
         samples: List<WifiSignalSample>,
@@ -55,16 +59,42 @@ object WifiFocusedSignalHistoryProjection {
             return null
         }
 
-        val observedMin = points.minOf { it.observedAtMillis }
-        val observedMax = points.maxOf { it.observedAtMillis }
+        val observedMinTime = points.minOf { it.observedAtMillis }
+        val observedMaxTime = points.maxOf { it.observedAtMillis }
+        val observedWeakestRssi = points.minOf { it.rssiDbm }
+        val observedStrongestRssi = points.maxOf { it.rssiDbm }
+
+        var minRssi = floorToRssiGrid(observedWeakestRssi)
+        var maxRssi = ceilToRssiGrid(observedStrongestRssi)
+
+        while (maxRssi - minRssi < MIN_RSSI_SPAN_DB) {
+            val upperHeadroom = maxRssi - observedStrongestRssi
+            val lowerHeadroom = observedWeakestRssi - minRssi
+
+            if (upperHeadroom <= lowerHeadroom) {
+                maxRssi += RSSI_GRID_STEP_DB
+            } else {
+                minRssi -= RSSI_GRID_STEP_DB
+            }
+        }
 
         return WifiSignalHistoryViewport(
-            minTimeMillis = if (observedMin == observedMax) {
-                observedMax - SINGLE_POINT_WINDOW_MILLIS
+            minTimeMillis = if (observedMinTime == observedMaxTime) {
+                observedMaxTime - SINGLE_POINT_WINDOW_MILLIS
             } else {
-                observedMin
+                observedMinTime
             },
-            maxTimeMillis = observedMax
+            maxTimeMillis = observedMaxTime,
+            minRssiDbm = minRssi,
+            maxRssiDbm = maxRssi
         )
     }
+
+    private fun ceilToRssiGrid(rssiDbm: Int): Int =
+        ceil(rssiDbm.toDouble() / RSSI_GRID_STEP_DB)
+            .toInt() * RSSI_GRID_STEP_DB
+
+    private fun floorToRssiGrid(rssiDbm: Int): Int =
+        floor(rssiDbm.toDouble() / RSSI_GRID_STEP_DB)
+            .toInt() * RSSI_GRID_STEP_DB
 }
