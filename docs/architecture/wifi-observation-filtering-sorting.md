@@ -156,6 +156,26 @@ This is a presentation-only refinement. It does not change filtering, sorting,
 signal ranking, temporal history, observation identity, RF interpretation or the
 underlying scan snapshot.
 
+### Physical-device acceptance
+
+Phase 2B.1 was accepted on the Samsung Galaxy J8 (SM-J810M, Android 10) after
+device testing of the compact and expanded nearby-network cards.
+
+The accepted device state demonstrates:
+
+- multiple real nearby observations rendered as compact cards;
+- SSID and BSSID remaining visually distinct;
+- RSSI retaining its established position, size and accent color;
+- compact RF summaries limited to band, channel and channel width;
+- `More` expanding an individual card vertically;
+- `Less` returning it to the compact state;
+- the raw Android capability string fitting in the expanded card;
+- other cards remaining compact while one card is expanded.
+
+The accepted layout is deliberately not treated as the final network-detail
+surface. More information can be added later without reopening the Phase 2B.1
+summary-card contract.
+
 ### Expandable observation card
 
 The compact card is the default state so a crowded scan remains easy to skim.
