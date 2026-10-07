@@ -45,9 +45,6 @@ import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanState
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiSignalRanker
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiSignalScope
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiRfInterpreter
-import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumCompleteness
-import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumGeometry
-import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumSegment
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiTemporalObservationHistory
 import io.github.dante_souza.yeyecatl.platform.wifi.LocationServicesStatus
@@ -60,6 +57,7 @@ import io.github.dante_souza.yeyecatl.platform.wifi.WifiHardwareStatus
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiPlatformReadiness
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiPowerStatus
 import io.github.dante_souza.yeyecatl.ui.history.WifiSignalHistoryChart
+import io.github.dante_souza.yeyecatl.ui.networks.WifiObservationListItem
 import io.github.dante_souza.yeyecatl.ui.networks.WifiObservationQueryControls
 import io.github.dante_souza.yeyecatl.ui.signal.WifiSignalRankingCard
 import io.github.dante_souza.yeyecatl.ui.spectrum.WifiSpectrumChart
@@ -380,10 +378,9 @@ private fun ScanResults(
         )
     } else {
         visibleObservations.forEach { observation ->
-            Text(
-                text = observation.rowText(),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 8.dp)
+            WifiObservationListItem(
+                observation = observation,
+                modifier = Modifier.padding(top = 10.dp)
             )
         }
     }
@@ -583,29 +580,6 @@ private fun WifiScanFreshness.label(): String =
         WifiScanFreshness.Unknown -> "Unknown"
     }
 
-private fun WifiScanObservation.rowText(): String {
-    val ssidText = ssid.displayText ?: if (ssid.isHidden) {
-        "<hidden>"
-    } else {
-        "<unavailable>"
-    }
-    val rf = WifiRfInterpreter.interpret(this)
-    val footprint = WifiSpectrumGeometry.footprint(rf)
-    return listOf(
-        "SSID: $ssidText",
-        "BSSID: ${bssid ?: "<no BSSID>"}",
-        "RSSI: ${rssiDbm?.let { "$it dBm" } ?: "?"}",
-        "Band: ${rf.band.label()}",
-        "Channel: ${rf.primaryChannel?.toString() ?: "unknown"}",
-        "Primary: ${frequencyMhz?.let { "$it MHz" } ?: "unknown"}",
-        "Width: ${rf.channelWidth.label()}",
-        "Center: ${centerFrequency0Mhz?.let { "$it MHz" } ?: "unknown"}",
-        "Span: ${footprint.spanText()}",
-        "Geometry: ${footprint.completeness.label()}",
-        "Standard: ${rf.wifiStandard.label()}"
-    ).joinToString(separator = "  ")
-}
-
 private fun io.github.dante_souza.yeyecatl.domain.wifi.WifiBand.label(): String =
     when (this) {
         io.github.dante_souza.yeyecatl.domain.wifi.WifiBand.Ghz2_4 -> "2.4 GHz"
@@ -613,46 +587,6 @@ private fun io.github.dante_souza.yeyecatl.domain.wifi.WifiBand.label(): String 
         io.github.dante_souza.yeyecatl.domain.wifi.WifiBand.Ghz6 -> "6 GHz"
         io.github.dante_souza.yeyecatl.domain.wifi.WifiBand.Ghz60 -> "60 GHz"
         io.github.dante_souza.yeyecatl.domain.wifi.WifiBand.Unknown -> "Unknown"
-    }
-
-private fun io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.label(): String =
-    when (this) {
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Mhz20 -> "20 MHz"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Mhz40 -> "40 MHz"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Mhz80 -> "80 MHz"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Mhz160 -> "160 MHz"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Mhz80Plus80 -> "80+80 MHz"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Mhz320 -> "320 MHz"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Unknown -> "Unknown"
-    }
-
-private fun io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.label(): String =
-    when (this) {
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Legacy -> "Legacy"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Ieee80211n -> "802.11n"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Ieee80211ac -> "802.11ac"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Ieee80211ax -> "802.11ax"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Ieee80211ad -> "802.11ad"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Ieee80211be -> "802.11be"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Unknown -> "Unknown"
-    }
-
-private fun io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumFootprint.spanText(): String =
-    if (segments.isEmpty()) {
-        "unavailable"
-    } else {
-        segments.joinToString(separator = "; ") { it.spanText() }
-    }
-
-private fun WifiSpectrumSegment.spanText(): String =
-    "${lowerFrequencyMhz}-${upperFrequencyMhz} MHz"
-
-private fun WifiSpectrumCompleteness.label(): String =
-    when (this) {
-        WifiSpectrumCompleteness.Complete -> "Complete"
-        WifiSpectrumCompleteness.Partial -> "Partial"
-        WifiSpectrumCompleteness.Unavailable -> "Unavailable"
-        WifiSpectrumCompleteness.Inconsistent -> "Inconsistent"
     }
 
 private fun Boolean.yesNo(): String =

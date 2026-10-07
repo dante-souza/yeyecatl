@@ -121,6 +121,34 @@ The UI shows both:
 
 This distinction prevents a filtered list from looking like scan data loss.
 
+## Phase 2B.1 — Nearby Network List Polish
+
+The current-snapshot query behavior remains unchanged, but each visible observation
+is now presented with a visual hierarchy instead of one long diagnostic sentence.
+
+Each network card shows:
+
+- SSID as the primary title;
+- RSSI as the immediately visible signal measurement;
+- BSSID as a secondary monospace identity;
+- band, primary channel, frequency, channel width and observed Wi-Fi standard in
+  one compact RF summary;
+- center-frequency and spectrum-footprint geometry on a secondary line;
+- the raw Android capability string without reinterpreting it as a friendlier
+  security label.
+
+Hidden SSIDs are shown as `Hidden network`. A missing non-hidden display name is
+shown as `SSID unavailable`. Missing RF values remain explicit rather than being
+inferred.
+
+The presentation mapper is pure Kotlin and uses the existing
+`WifiRfInterpreter` and `WifiSpectrumGeometry` boundaries. The Compose card only
+renders the already-derived presentation model.
+
+This is a presentation-only refinement. It does not change filtering, sorting,
+signal ranking, temporal history, observation identity, RF interpretation or the
+underlying scan snapshot.
+
 ## Required Tests
 
 Deterministic JVM tests cover:

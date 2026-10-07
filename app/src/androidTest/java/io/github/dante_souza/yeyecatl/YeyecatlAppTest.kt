@@ -150,8 +150,8 @@ class YeyecatlAppTest {
 
         onNodeWithText("Observed networks").assertIsDisplayed()
         onNodeWithText("7").assertIsDisplayed()
-        onNodeWithText("SSID: network-1", substring = true).assertIsDisplayed()
-        onNodeWithText("SSID: network-7", substring = true).assertIsDisplayed()
+        onNodeWithText("BSSID  00:00:00:00:00:01").assertIsDisplayed()
+        onNodeWithText("BSSID  00:00:00:00:00:07").assertIsDisplayed()
     }
 
     @Test
@@ -278,7 +278,9 @@ class YeyecatlAppTest {
 
         onNodeWithText("Observed networks").assertIsDisplayed()
         onNodeWithText("Freshness").assertIsDisplayed()
-        onNodeWithText("SSID: whanganui", substring = true).assertIsDisplayed()
+        onNodeWithText("BSSID  00:00:00:00:00:01").assertIsDisplayed()
+        onNodeWithText("2.4 GHz • Ch 1 • 2412 MHz • 20 MHz • Standard ?").assertIsDisplayed()
+        onNodeWithText("Capabilities  [ESS]").assertIsDisplayed()
     }
 
     private fun resultsState(observations: List<WifiScanObservation>): WifiScanState =
