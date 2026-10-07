@@ -70,8 +70,16 @@ fun WifiSpectrumChart(
             .height(280.dp)
             .padding(top = 12.dp)
             .semantics {
-                contentDescription = "${band.label()} Wi-Fi spectrum chart with " +
-                    "${visualObservations.size} observed access points"
+                contentDescription = buildString {
+                    append("${band.label()} Wi-Fi spectrum chart with ")
+                    append("${visualObservations.size} observed access points")
+                    if (selectedBssid != null &&
+                        visualObservations.any { it.bssid == selectedBssid }
+                    ) {
+                        append("; selected BSSID ")
+                        append(selectedBssid)
+                    }
+                }
             }
     ) {
         val plotLeft = 48.dp.toPx()
