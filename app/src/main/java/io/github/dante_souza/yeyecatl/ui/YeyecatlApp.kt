@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -19,9 +21,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -34,6 +38,7 @@ import io.github.dante_souza.yeyecatl.R
 import io.github.dante_souza.yeyecatl.domain.wifi.ObservedSsid
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiBand
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationDetail
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationDetailResolver
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationQuery
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationSelection
@@ -278,7 +283,11 @@ private fun ScanResults(
     var observationSortName by rememberSaveable {
         mutableStateOf(WifiObservationSort.PlatformOrder.name)
     }
-    var selectedBssid by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedBssid by remember { mutableStateOf<String?>(null) }
+    var focusedDetail by remember { mutableStateOf<WifiObservationDetail?>(null) }
+    val focusedSelectionBringIntoViewRequester = remember {
+        BringIntoViewRequester()
+    }
 
     val selectedBand = WifiBand.valueOf(selectedBandName)
     val selectedSignalScope = WifiSignalScope.valueOf(selectedSignalScopeName)
@@ -301,12 +310,23 @@ private fun ScanResults(
         )
     )
     val sameSsidCounts = sameSsidBssidCounts(snapshot.observations)
-    val selectedDetail = selectedBssid?.let { bssid ->
-        WifiObservationDetailResolver.resolve(
-            selection = WifiObservationSelection(bssid),
+
+    LaunchedEffect(selectedBssid, snapshot.receivedAtMillis, temporalHistory) {
+        focusedDetail = WifiObservationDetailResolver.resolve(
+            selection = selectedBssid?.let(::WifiObservationSelection),
             snapshot = snapshot,
-            history = temporalHistory
+            history = temporalHistory,
+            previousDetail = focusedDetail
         )
+    }
+
+    val selectedDetail = focusedDetail
+        ?.takeIf { it.selection.bssid == selectedBssid }
+
+    LaunchedEffect(selectedDetail?.selection?.bssid) {
+        if (selectedDetail != null) {
+            focusedSelectionBringIntoViewRequester.bringIntoView()
+        }
     }
 
     BandSelector(
@@ -383,6 +403,22 @@ private fun ScanResults(
     ReadinessRow("Visible networks", visibleObservations.size.toString())
     ReadinessRow("Freshness", snapshot.freshness.label())
 
+    if (selectedDetail != null) {
+        Text(
+            text = "Focused selection",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .padding(top = 14.dp)
+                .bringIntoViewRequester(focusedSelectionBringIntoViewRequester)
+        )
+        WifiObservationDetailCard(
+            detail = selectedDetail,
+            onClearSelection = { selectedBssid = null },
+            modifier = Modifier.padding(top = 6.dp, bottom = 4.dp)
+        )
+    }
+
     if (visibleObservations.isEmpty()) {
         Text(
             text = "No networks match the current filters.",
@@ -408,16 +444,10 @@ private fun ScanResults(
                     },
                     modifier = Modifier.padding(top = 10.dp)
                 )
-                if (isSelected && selectedDetail != null) {
-                    WifiObservationDetailCard(
-                        detail = selectedDetail,
-                        onClearSelection = { selectedBssid = null },
-                        modifier = Modifier.padding(top = 6.dp)
-                    )
-                }
             }
         }
     }
+
 }
 
 @Composable

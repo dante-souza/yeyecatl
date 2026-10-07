@@ -10,7 +10,7 @@ ADB ?= adb
 APP_ID := io.github.dante_souza.yeyecatl
 TEST_APP_ID := $(APP_ID).test
 
-.PHONY: help setup build assemble-debug test unit-test android-test android-test-build android-test-install android-test-diagnostics lint check clean install-debug adb-devices device-info device-smoke logcat app-logcat device-diagnostics agents-list skills-list agents-check
+.PHONY: help setup build assemble-debug test unit-test android-test android-test-build android-test-install android-test-diagnostics lint check clean install-debug open-app adb-devices device-info device-smoke logcat app-logcat device-diagnostics agents-list skills-list agents-check
 
 help:
 	@printf '%s\n' \
@@ -29,6 +29,7 @@ help:
 	  '  make check         Run build, tests, lint and agent validation' \
 	  '  make clean         Remove Gradle build outputs' \
 	  '  make install-debug Install debug APK with adb' \
+	  '  make open-app      Launch the already-installed Yeyecatl app' \
 	  '  make adb-devices   List connected adb devices' \
 	  '  make device-info   Show connected device/app environment' \
 	  '  make device-smoke  Install and launch the debug app' \
@@ -105,6 +106,9 @@ clean:
 install-debug:
 	@$(GRADLE) :app:installDebug
 
+open-app:
+	@$(ADB) shell am start -n $(APP_ID)/.MainActivity
+
 adb-devices:
 	@$(ADB) devices
 
@@ -119,8 +123,7 @@ device-info:
 	@$(ADB) shell pm list features | grep 'android.hardware.wifi' || true
 	@$(ADB) shell dumpsys package $(APP_ID) | grep -E 'versionName|versionCode' || true
 
-device-smoke: install-debug
-	@$(ADB) shell monkey -p $(APP_ID) 1
+device-smoke: install-debug open-app
 
 logcat:
 	@$(ADB) logcat

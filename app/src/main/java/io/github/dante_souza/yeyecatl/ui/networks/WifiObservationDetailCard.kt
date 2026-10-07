@@ -20,6 +20,8 @@ import io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationDetail
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumCompleteness
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard
+import io.github.dante_souza.yeyecatl.ui.history.WifiFocusedSignalHistoryChart
+import io.github.dante_souza.yeyecatl.ui.history.WifiFocusedSignalHistoryProjection
 
 @Composable
 fun WifiObservationDetailCard(
@@ -28,6 +30,9 @@ fun WifiObservationDetailCard(
     modifier: Modifier = Modifier
 ) {
     val observation = detail.latestObservation
+    val temporalSummary = WifiFocusedSignalHistoryProjection.summary(detail.retainedSignalSamples)
+    val timeSinceLastSeenMillis = (detail.latestSnapshotReceivedAtMillis - detail.lastSeenAtMillis)
+        .coerceAtLeast(0L)
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -66,12 +71,25 @@ fun WifiObservationDetailCard(
             }
 
             DetailRow(
+                label = "Latest scan",
+                value = if (detail.observedInLatestSnapshot) "Seen" else "Not seen"
+            )
+            DetailRow(
+                label = "Last seen",
+                value = if (detail.observedInLatestSnapshot) {
+                    "now"
+                } else {
+                    elapsedLabel(timeSinceLastSeenMillis)
+                }
+            )
+
+            DetailRow(
                 label = "BSSID",
                 value = detail.selection.bssid,
                 monospace = true
             )
             DetailRow(
-                label = "RSSI",
+                label = "Observed RSSI",
                 value = observation.rssiDbm?.let { "$it dBm" } ?: "Unavailable"
             )
             DetailRow(
@@ -132,6 +150,41 @@ fun WifiObservationDetailCard(
                         ?.let { "${it / 1_000.0} s" }
                         ?: "Unavailable"
                 )
+                temporalSummary?.let { summary ->
+                    DetailRow(
+                        label = "Latest retained RSSI",
+                        value = "${summary.latestRssiDbm} dBm"
+                    )
+                    DetailRow(
+                        label = "Strongest retained RSSI",
+                        value = "${summary.strongestRssiDbm} dBm"
+                    )
+                    DetailRow(
+                        label = "Weakest retained RSSI",
+                        value = "${summary.weakestRssiDbm} dBm"
+                    )
+                    DetailRow(
+                        label = "Retained RSSI range",
+                        value = "${summary.rangeDb} dB"
+                    )
+                }
+
+                Text(
+                    text = "Focused RSSI history",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+                Text(
+                    text = "Exact BSSID · bounded in-memory history · up to 60 newest retained samples shown.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                WifiFocusedSignalHistoryChart(
+                    samples = detail.retainedSignalSamples,
+                    bssid = detail.selection.bssid,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
             }
 
             Text(
@@ -142,6 +195,15 @@ fun WifiObservationDetailCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+private fun elapsedLabel(deltaMillis: Long): String {
+    val seconds = deltaMillis / 1_000L
+    return when {
+        seconds < 60L -> "${seconds}s ago"
+        seconds < 3_600L -> "${seconds / 60L}m ${seconds % 60L}s ago"
+        else -> "${seconds / 3_600L}h ${(seconds % 3_600L) / 60L}m ago"
     }
 }
 
