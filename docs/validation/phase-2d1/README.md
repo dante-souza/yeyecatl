@@ -147,6 +147,12 @@ The integration commit uses the previous `dev` head as first parent and the
 frozen Phase 2D.1 feature head as second parent, preserving implementation
 history and branch topology.
 
+Merged `dev` GitHub Actions validation:
+
+```text
+37667218512 — PASS
+```
+
 ## Original physical-device evidence
 
 The original validation photographs are identified byte-for-byte in:
@@ -227,7 +233,7 @@ v0.1.0-phase2d1-channel-occupancy-overlap.1
 
 **IMPLEMENTATION INTEGRATION: COMPLETE**
 
-**INTEGRATED DEV CI: PENDING RECORD**
+**INTEGRATED DEV CI: PASS — 37667218512**
 
 **IMPLEMENTATION FREEZE: COMPLETE**
 
