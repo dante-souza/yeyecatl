@@ -73,7 +73,11 @@ Physical-device validation showed that a selected BSSID may be transiently absen
 
 If the selected BSSID is missed by a later scan, Yeyecatl keeps the detail panel open using the last known normalized observation and retained temporal history. The panel is explicitly marked **Not seen in latest scan** and current RSSI wording changes to **Last observed RSSI**. When the BSSID reappears, live/current detail resumes automatically.
 
-Nearby-network filters and sorting also do not clear the focused session. If the selected row is hidden by the current query, the focused detail remains available separately below the list.
+Nearby-network filters and sorting also do not clear the focused session.
+
+The focused inspector now occupies one dedicated layout slot above the mutable nearby-network rows. It no longer moves between an inline row expansion and a fallback block when a BSSID is missed by a scan. The selected live row remains highlighted when present, while the focused inspector stays in the same structural location.
+
+The observation-status area also keeps a stable row structure across scan updates: **Latest scan** reports `Seen` or `Not seen`, **Last seen** is always present, and **Observed RSSI** keeps one label for current or last-known signal data. This avoids scan-driven height changes in the focused card.
 
 The focused session ends only when the user clears it, selects another BSSID, or the in-memory application/session state is reset.
 
