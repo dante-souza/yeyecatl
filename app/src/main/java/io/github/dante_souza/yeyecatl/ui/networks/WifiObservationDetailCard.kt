@@ -20,6 +20,8 @@ import io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationDetail
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumCompleteness
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard
+import io.github.dante_souza.yeyecatl.ui.history.WifiFocusedSignalHistoryChart
+import io.github.dante_souza.yeyecatl.ui.history.WifiFocusedSignalHistoryProjection
 
 @Composable
 fun WifiObservationDetailCard(
@@ -28,6 +30,7 @@ fun WifiObservationDetailCard(
     modifier: Modifier = Modifier
 ) {
     val observation = detail.latestObservation
+    val temporalSummary = WifiFocusedSignalHistoryProjection.summary(detail.retainedSignalSamples)
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -131,6 +134,41 @@ fun WifiObservationDetailCard(
                     value = detail.retainedHistorySpanMillis
                         ?.let { "${it / 1_000.0} s" }
                         ?: "Unavailable"
+                )
+                temporalSummary?.let { summary ->
+                    DetailRow(
+                        label = "Latest retained RSSI",
+                        value = "${summary.latestRssiDbm} dBm"
+                    )
+                    DetailRow(
+                        label = "Strongest retained RSSI",
+                        value = "${summary.strongestRssiDbm} dBm"
+                    )
+                    DetailRow(
+                        label = "Weakest retained RSSI",
+                        value = "${summary.weakestRssiDbm} dBm"
+                    )
+                    DetailRow(
+                        label = "Retained RSSI range",
+                        value = "${summary.rangeDb} dB"
+                    )
+                }
+
+                Text(
+                    text = "Focused RSSI history",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+                Text(
+                    text = "Exact BSSID · bounded in-memory history · newest 60 retained samples shown.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                WifiFocusedSignalHistoryChart(
+                    samples = detail.retainedSignalSamples,
+                    bssid = detail.selection.bssid,
+                    modifier = Modifier.padding(top = 2.dp)
                 )
             }
 
