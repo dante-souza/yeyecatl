@@ -11,6 +11,24 @@ import org.junit.Test
 
 class WifiSignalHistoryProjectionTest {
     @Test
+    fun heldEndpointIsPresentationOnlyAndExpiresAtLimit() {
+        val original = listOf(WifiSignalHistoryPoint(10_000L, -62))
+        val held = WifiSignalHistoryProjection.heldEndpoint(
+            points = original, nowMillis = 20_000L, maxHoldMillis = 15_000L
+        )
+        assertEquals(20_000L, held?.observedAtMillis)
+        assertEquals(-62, held?.rssiDbm)
+        assertEquals(1, original.size)
+        assertEquals(10_000L, original.single().observedAtMillis)
+        assertEquals(null, WifiSignalHistoryProjection.heldEndpoint(
+            original, nowMillis = 25_000L, maxHoldMillis = 15_000L
+        ))
+        assertEquals(null, WifiSignalHistoryProjection.heldEndpoint(
+            original, nowMillis = 9_000L, maxHoldMillis = 15_000L
+        ))
+    }
+
+    @Test
     fun projectsOnlySelectedBssidsAndSelectedBand() {
         val history = WifiTemporalObservationHistory(
             samplesByBssid = mapOf(
