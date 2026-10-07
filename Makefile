@@ -114,8 +114,8 @@ lint:
 check: build unit-test android-test-build lint device-helpers-check agents-check
 
 device-helpers-check:
-	@$(MAKE) -n device-info-j8 | grep -F '$serial' >/dev/null
-	@$(MAKE) -n device-info-g41 | grep -F '$serial' >/dev/null
+	@$(MAKE) -n device-info-j8 | grep -F '$$serial' >/dev/null
+	@$(MAKE) -n device-info-g41 | grep -F '$$serial' >/dev/null
 	@printf '%s\n' 'validated device helper shell-variable escaping'
 
 clean:
@@ -126,52 +126,52 @@ install-debug:
 
 install-debug-j8: assemble-debug
 	@serial="$(J8_SERIAL)"; \
-	if [ -z "$serial" ]; then \
-	  for candidate in $($(ADB) devices | awk 'NR > 1 && $2 == "device" { print $1 }'); do \
-	    model="$($(ADB) -s "$candidate" shell getprop ro.product.model | tr -d '\r')"; \
-	    if [ "$model" = "$(J8_MODEL)" ]; then serial="$candidate"; break; fi; \
+	if [ -z "$$serial" ]; then \
+	  for candidate in $$($(ADB) devices | awk 'NR > 1 && $$2 == "device" { print $$1 }'); do \
+	    model="$$($(ADB) -s "$$candidate" shell getprop ro.product.model | tr -d '\r')"; \
+	    if [ "$$model" = "$(J8_MODEL)" ]; then serial="$$candidate"; break; fi; \
 	  done; \
 	fi; \
-	if [ -z "$serial" ]; then printf '%s\n' 'ERROR: Galaxy J8 not found. Set J8_SERIAL=... to override.'; exit 1; fi; \
-	$(ADB) -s "$serial" install --no-streaming -r $(DEBUG_APK)
+	if [ -z "$$serial" ]; then printf '%s\n' 'ERROR: Galaxy J8 not found. Set J8_SERIAL=... to override.'; exit 1; fi; \
+	$(ADB) -s "$$serial" install --no-streaming -r $(DEBUG_APK)
 
 install-debug-g41: assemble-debug
 	@serial="$(G41_SERIAL)"; \
-	if [ -z "$serial" ]; then \
-	  for candidate in $($(ADB) devices | awk 'NR > 1 && $2 == "device" { print $1 }'); do \
-	    model="$($(ADB) -s "$candidate" shell getprop ro.product.model | tr -d '\r')"; \
-	    if [ "$model" = "$(G41_MODEL)" ]; then serial="$candidate"; break; fi; \
+	if [ -z "$$serial" ]; then \
+	  for candidate in $$($(ADB) devices | awk 'NR > 1 && $$2 == "device" { print $$1 }'); do \
+	    model="$$($(ADB) -s "$$candidate" shell getprop ro.product.model | tr -d '\r')"; \
+	    if [ "$$model" = "$(G41_MODEL)" ]; then serial="$$candidate"; break; fi; \
 	  done; \
 	fi; \
-	if [ -z "$serial" ]; then printf '%s\n' 'ERROR: Moto G41 not found. Set G41_SERIAL=... to override.'; exit 1; fi; \
-	$(ADB) -s "$serial" install --no-streaming -r $(DEBUG_APK)
+	if [ -z "$$serial" ]; then printf '%s\n' 'ERROR: Moto G41 not found. Set G41_SERIAL=... to override.'; exit 1; fi; \
+	$(ADB) -s "$$serial" install --no-streaming -r $(DEBUG_APK)
 
 open-app:
 	@$(ADB) shell am start -n $(APP_ID)/.MainActivity
 
 open-app-j8:
 	@serial="$(J8_SERIAL)"; \
-	if [ -z "$serial" ]; then \
-	  for candidate in $($(ADB) devices | awk 'NR > 1 && $2 == "device" { print $1 }'); do \
-	    model="$($(ADB) -s "$candidate" shell getprop ro.product.model | tr -d '\r')"; \
-	    if [ "$model" = "$(J8_MODEL)" ]; then serial="$candidate"; break; fi; \
+	if [ -z "$$serial" ]; then \
+	  for candidate in $$($(ADB) devices | awk 'NR > 1 && $$2 == "device" { print $$1 }'); do \
+	    model="$$($(ADB) -s "$$candidate" shell getprop ro.product.model | tr -d '\r')"; \
+	    if [ "$$model" = "$(J8_MODEL)" ]; then serial="$$candidate"; break; fi; \
 	  done; \
 	fi; \
-	if [ -z "$serial" ]; then printf '%s\n' 'ERROR: Galaxy J8 not found. Set J8_SERIAL=... to override.'; exit 1; fi; \
-	$(ADB) -s "$serial" shell am force-stop $(APP_ID); \
-	$(ADB) -s "$serial" shell am start -n $(APP_ID)/.MainActivity
+	if [ -z "$$serial" ]; then printf '%s\n' 'ERROR: Galaxy J8 not found. Set J8_SERIAL=... to override.'; exit 1; fi; \
+	$(ADB) -s "$$serial" shell am force-stop $(APP_ID); \
+	$(ADB) -s "$$serial" shell am start -n $(APP_ID)/.MainActivity
 
 open-app-g41:
 	@serial="$(G41_SERIAL)"; \
-	if [ -z "$serial" ]; then \
-	  for candidate in $($(ADB) devices | awk 'NR > 1 && $2 == "device" { print $1 }'); do \
-	    model="$($(ADB) -s "$candidate" shell getprop ro.product.model | tr -d '\r')"; \
-	    if [ "$model" = "$(G41_MODEL)" ]; then serial="$candidate"; break; fi; \
+	if [ -z "$$serial" ]; then \
+	  for candidate in $$($(ADB) devices | awk 'NR > 1 && $$2 == "device" { print $$1 }'); do \
+	    model="$$($(ADB) -s "$$candidate" shell getprop ro.product.model | tr -d '\r')"; \
+	    if [ "$$model" = "$(G41_MODEL)" ]; then serial="$$candidate"; break; fi; \
 	  done; \
 	fi; \
-	if [ -z "$serial" ]; then printf '%s\n' 'ERROR: Moto G41 not found. Set G41_SERIAL=... to override.'; exit 1; fi; \
-	$(ADB) -s "$serial" shell am force-stop $(APP_ID); \
-	$(ADB) -s "$serial" shell am start -n $(APP_ID)/.MainActivity
+	if [ -z "$$serial" ]; then printf '%s\n' 'ERROR: Moto G41 not found. Set G41_SERIAL=... to override.'; exit 1; fi; \
+	$(ADB) -s "$$serial" shell am force-stop $(APP_ID); \
+	$(ADB) -s "$$serial" shell am start -n $(APP_ID)/.MainActivity
 
 adb-devices:
 	@$(ADB) devices
@@ -189,41 +189,41 @@ device-info:
 
 device-info-j8:
 	@serial="$(J8_SERIAL)"; \
-	if [ -z "$serial" ]; then \
-	  for candidate in $($(ADB) devices | awk 'NR > 1 && $2 == "device" { print $1 }'); do \
-	    model="$($(ADB) -s "$candidate" shell getprop ro.product.model | tr -d '\r')"; \
-	    if [ "$model" = "$(J8_MODEL)" ]; then serial="$candidate"; break; fi; \
+	if [ -z "$$serial" ]; then \
+	  for candidate in $$($(ADB) devices | awk 'NR > 1 && $$2 == "device" { print $$1 }'); do \
+	    model="$$($(ADB) -s "$$candidate" shell getprop ro.product.model | tr -d '\r')"; \
+	    if [ "$$model" = "$(J8_MODEL)" ]; then serial="$$candidate"; break; fi; \
 	  done; \
 	fi; \
-	if [ -z "$serial" ]; then printf '%s\n' 'ERROR: Galaxy J8 not found. Set J8_SERIAL=... to override.'; exit 1; fi; \
+	if [ -z "$$serial" ]; then printf '%s\n' 'ERROR: Galaxy J8 not found. Set J8_SERIAL=... to override.'; exit 1; fi; \
 	printf 'device=Galaxy J8\nmodel=%s\n' "$(J8_MODEL)"; \
-	printf 'manufacturer='; $(ADB) -s "$serial" shell getprop ro.product.manufacturer; \
-	printf 'android_release='; $(ADB) -s "$serial" shell getprop ro.build.version.release; \
-	printf 'api_level='; $(ADB) -s "$serial" shell getprop ro.build.version.sdk; \
-	printf 'abi='; $(ADB) -s "$serial" shell getprop ro.product.cpu.abi; \
-	$(ADB) -s "$serial" shell wm size; \
-	$(ADB) -s "$serial" shell wm density; \
-	$(ADB) -s "$serial" shell pm list features | grep 'android.hardware.wifi' || true; \
-	$(ADB) -s "$serial" shell dumpsys package $(APP_ID) | grep -E 'versionName|versionCode' || true
+	printf 'manufacturer='; $(ADB) -s "$$serial" shell getprop ro.product.manufacturer; \
+	printf 'android_release='; $(ADB) -s "$$serial" shell getprop ro.build.version.release; \
+	printf 'api_level='; $(ADB) -s "$$serial" shell getprop ro.build.version.sdk; \
+	printf 'abi='; $(ADB) -s "$$serial" shell getprop ro.product.cpu.abi; \
+	$(ADB) -s "$$serial" shell wm size; \
+	$(ADB) -s "$$serial" shell wm density; \
+	$(ADB) -s "$$serial" shell pm list features | grep 'android.hardware.wifi' || true; \
+	$(ADB) -s "$$serial" shell dumpsys package $(APP_ID) | grep -E 'versionName|versionCode' || true
 
 device-info-g41:
 	@serial="$(G41_SERIAL)"; \
-	if [ -z "$serial" ]; then \
-	  for candidate in $($(ADB) devices | awk 'NR > 1 && $2 == "device" { print $1 }'); do \
-	    model="$($(ADB) -s "$candidate" shell getprop ro.product.model | tr -d '\r')"; \
-	    if [ "$model" = "$(G41_MODEL)" ]; then serial="$candidate"; break; fi; \
+	if [ -z "$$serial" ]; then \
+	  for candidate in $$($(ADB) devices | awk 'NR > 1 && $$2 == "device" { print $$1 }'); do \
+	    model="$$($(ADB) -s "$$candidate" shell getprop ro.product.model | tr -d '\r')"; \
+	    if [ "$$model" = "$(G41_MODEL)" ]; then serial="$$candidate"; break; fi; \
 	  done; \
 	fi; \
-	if [ -z "$serial" ]; then printf '%s\n' 'ERROR: Moto G41 not found. Set G41_SERIAL=... to override.'; exit 1; fi; \
+	if [ -z "$$serial" ]; then printf '%s\n' 'ERROR: Moto G41 not found. Set G41_SERIAL=... to override.'; exit 1; fi; \
 	printf 'device=Moto G41\nmodel=%s\n' "$(G41_MODEL)"; \
-	printf 'manufacturer='; $(ADB) -s "$serial" shell getprop ro.product.manufacturer; \
-	printf 'android_release='; $(ADB) -s "$serial" shell getprop ro.build.version.release; \
-	printf 'api_level='; $(ADB) -s "$serial" shell getprop ro.build.version.sdk; \
-	printf 'abi='; $(ADB) -s "$serial" shell getprop ro.product.cpu.abi; \
-	$(ADB) -s "$serial" shell wm size; \
-	$(ADB) -s "$serial" shell wm density; \
-	$(ADB) -s "$serial" shell pm list features | grep 'android.hardware.wifi' || true; \
-	$(ADB) -s "$serial" shell dumpsys package $(APP_ID) | grep -E 'versionName|versionCode' || true
+	printf 'manufacturer='; $(ADB) -s "$$serial" shell getprop ro.product.manufacturer; \
+	printf 'android_release='; $(ADB) -s "$$serial" shell getprop ro.build.version.release; \
+	printf 'api_level='; $(ADB) -s "$$serial" shell getprop ro.build.version.sdk; \
+	printf 'abi='; $(ADB) -s "$$serial" shell getprop ro.product.cpu.abi; \
+	$(ADB) -s "$$serial" shell wm size; \
+	$(ADB) -s "$$serial" shell wm density; \
+	$(ADB) -s "$$serial" shell pm list features | grep 'android.hardware.wifi' || true; \
+	$(ADB) -s "$$serial" shell dumpsys package $(APP_ID) | grep -E 'versionName|versionCode' || true
 
 device-smoke: install-debug open-app
 
