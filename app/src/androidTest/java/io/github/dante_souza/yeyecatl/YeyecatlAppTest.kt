@@ -6,6 +6,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -268,6 +269,56 @@ class YeyecatlAppTest {
         onNodeWithText("Weakest signals").assertIsDisplayed()
         onNodeWithText("strong").assertIsDisplayed()
         onNodeWithText("weak").assertIsDisplayed()
+    }
+
+    @Test
+    fun nearbyNetworkSelectionShowsBssidDetailAndCanBeCleared() = runComposeUiTest {
+        val selectedBssid = "00:00:00:00:00:01"
+        val observation = observation(
+            ssid = "whanganui",
+            bssid = selectedBssid,
+            rssiDbm = -42,
+            frequencyMhz = 2412
+        )
+        val history = WifiTemporalObservationHistory(
+            samplesByBssid = mapOf(
+                selectedBssid to listOf(
+                    WifiSignalSample(
+                        bssid = selectedBssid,
+                        ssid = observation.ssid,
+                        rssiDbm = -45,
+                        frequencyMhz = 2412,
+                        observedAtMillis = 1_000L
+                    ),
+                    WifiSignalSample(
+                        bssid = selectedBssid,
+                        ssid = observation.ssid,
+                        rssiDbm = -42,
+                        frequencyMhz = 2412,
+                        observedAtMillis = 3_000L
+                    )
+                )
+            )
+        )
+
+        setContent {
+            YeyecatlApp(
+                scanState = resultsState(listOf(observation)),
+                temporalHistory = history
+            )
+        }
+
+        onNodeWithContentDescription("Select access point $selectedBssid").performClick()
+        onNodeWithText("Selected access point").assertIsDisplayed()
+        onNodeWithText("Selected").assertIsDisplayed()
+        onNodeWithText("Primary frequency").assertIsDisplayed()
+        onNodeWithText("2412 MHz").assertIsDisplayed()
+        onNodeWithText("Retained RSSI samples").assertIsDisplayed()
+        onNodeWithText("2").assertIsDisplayed()
+        onNodeWithText("Retained history span").assertIsDisplayed()
+        onNodeWithText("2.0 s").assertIsDisplayed()
+        onNodeWithText("Clear selection").performClick()
+        onNodeWithText("Selected access point").assertIsNotDisplayed()
     }
 
     @Test
