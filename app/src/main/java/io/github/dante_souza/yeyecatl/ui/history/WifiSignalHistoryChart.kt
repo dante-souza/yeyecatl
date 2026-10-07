@@ -71,6 +71,21 @@ fun WifiSignalHistoryChart(
                 ?.copy(points = visiblePoints)
         }
     }
+    val staleHoldMillis = remember(pollingIntervalMillis) {
+        WifiSignalHistoryProjection.staleHoldMillis(pollingIntervalMillis)
+    }
+    val staleHoldSeconds = (staleHoldMillis + 999L) / 1_000L
+    val denseMode = visibleSeries.size > MAX_LEGEND_SERIES
+    val foregroundBssids = remember(visibleSeries, denseMode) {
+        if (denseMode) {
+            WifiSignalHistoryProjection.foregroundBssids(
+                series = visibleSeries,
+                maxForegroundSeries = DENSE_FOREGROUND_SERIES
+            )
+        } else {
+            visibleSeries.mapTo(linkedSetOf()) { it.bssid }
+        }
+    }
 
     if (visibleSeries.isEmpty()) {
         Box(
@@ -100,7 +115,7 @@ fun WifiSignalHistoryChart(
 
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
-            text = "Solid = measured · dashed = last-known (up to 15s) · blank = no recent data",
+            text = "Solid = measured · dashed = last-known (up to ${staleHoldSeconds}s) · blank = no recent data",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
@@ -178,24 +193,37 @@ fun WifiSignalHistoryChart(
             drawLine(axisColor, Offset(plotLeft, plotBottom), Offset(plotRight, plotBottom))
             drawLine(axisColor, Offset(plotLeft, plotTop), Offset(plotLeft, plotBottom))
 
-            val orderedSeries = visibleSeries.sortedBy {
-                it.bssid == selectedBssid
-            }
+            val orderedSeries = visibleSeries.sortedWith(
+                compareBy<WifiSignalHistoryVisualSeries> { visualSeries ->
+                    when {
+                        selectedBssid != null && visualSeries.bssid == selectedBssid -> 2
+                        visualSeries.bssid in foregroundBssids -> 1
+                        else -> 0
+                    }
+                }.thenBy { it.bssid }
+            )
 
             orderedSeries.forEach { visualSeries ->
                 val baseColor = palette[colorIndex(visualSeries.colorKey, palette.size)]
                 val isSelected = selectedBssid != null && visualSeries.bssid == selectedBssid
-                val isDimmed = selectedBssid != null && !isSelected
-                val color = if (isDimmed) baseColor.copy(alpha = 0.3f) else baseColor
-                val strokeWidth = if (isSelected) 4.dp.toPx() else 2.dp.toPx()
+                val isForeground = !denseMode || visualSeries.bssid in foregroundBssids
+                val color = when {
+                    isSelected -> baseColor
+                    selectedBssid != null && isForeground -> baseColor.copy(alpha = 0.22f)
+                    selectedBssid != null -> baseColor.copy(alpha = 0.06f)
+                    denseMode && isForeground -> baseColor.copy(alpha = 0.78f)
+                    denseMode -> baseColor.copy(alpha = 0.10f)
+                    else -> baseColor
+                }
+                val strokeWidth = when {
+                    isSelected -> 4.dp.toPx()
+                    denseMode && !isForeground -> 1.dp.toPx()
+                    else -> 2.dp.toPx()
+                }
                 val pointRadius = if (isSelected) 5.dp.toPx() else 3.dp.toPx()
-                val maxGapMillis = maxOf(
-                    WifiSignalHistoryProjection.MIN_LINE_GAP_THRESHOLD_MILLIS,
-                    pollingIntervalMillis * HISTORY_GAP_MULTIPLIER
-                )
                 val pointSegments = WifiSignalHistoryProjection.contiguousSegments(
                     points = visualSeries.points,
-                    maxGapMillis = maxGapMillis
+                    maxGapMillis = staleHoldMillis
                 )
 
                 pointSegments.forEach { segment ->
@@ -228,22 +256,25 @@ fun WifiSignalHistoryChart(
                         )
                     }
 
-                    offsets.forEach { point ->
-                        drawCircle(
-                            color = color,
-                            radius = pointRadius,
-                            center = point
-                        )
+                    if (!denseMode || isForeground || isSelected) {
+                        offsets.forEach { point ->
+                            drawCircle(
+                                color = color,
+                                radius = pointRadius,
+                                center = point
+                            )
+                        }
                     }
                 }
 
                 // Only a faded dashed guide extends from the latest measured point.
-                // This does not add a stored RF sample and expires after 15 seconds.
+                // This does not add a stored RF sample and expires with the cadence-aware
+                // freshness window used for measured-line continuity.
                 val latest = visualSeries.points.maxByOrNull { it.observedAtMillis }
                 val held = WifiSignalHistoryProjection.heldEndpoint(
                     points = visualSeries.points,
                     nowMillis = nowMillis,
-                    maxHoldMillis = HISTORY_MAX_HOLD_MILLIS
+                    maxHoldMillis = staleHoldMillis
                 )
                 if (latest != null && held != null && held.observedAtMillis > latest.observedAtMillis) {
                     val heldY = plotTop + WifiSignalHistoryProjection.rssiToY(
@@ -255,8 +286,13 @@ fun WifiSignalHistoryChart(
                     val toX = plotLeft + WifiSignalHistoryProjection.timeToX(
                         held.observedAtMillis, viewport, plotWidth
                     )
+                    val heldAlpha = when {
+                        isSelected -> 0.55f
+                        denseMode && !isForeground -> 0.08f
+                        else -> 0.30f
+                    }
                     drawLine(
-                        color = color.copy(alpha = if (isSelected) 0.55f else 0.3f),
+                        color = baseColor.copy(alpha = heldAlpha),
                         start = Offset(fromX, heldY),
                         end = Offset(toX, heldY),
                         strokeWidth = strokeWidth,
@@ -313,7 +349,7 @@ fun WifiSignalHistoryChart(
             }
         } else {
             Text(
-                text = "Use Strongest 5 or Weakest 5 for a labeled signal-history view.",
+                text = "All view emphasizes the ${DENSE_FOREGROUND_SERIES} strongest recent BSSIDs; background traces are subdued. Use Strongest 5 or Weakest 5 for labels.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 48.dp, end = 8.dp, top = 8.dp)
@@ -349,5 +385,4 @@ private fun WifiBand.label(): String =
 
 private const val MAX_LEGEND_SERIES = 5
 private const val HISTORY_CLOCK_TICK_MILLIS = 1_000L
-private const val HISTORY_GAP_MULTIPLIER = 3L
-private const val HISTORY_MAX_HOLD_MILLIS = 15_000L
+private const val DENSE_FOREGROUND_SERIES = 8
