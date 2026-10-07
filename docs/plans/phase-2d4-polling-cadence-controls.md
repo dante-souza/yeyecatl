@@ -1,0 +1,122 @@
+# Phase 2D.4 — Polling Cadence Controls + Dynamic Scan Finalization
+
+## Goal
+
+Finish Phase 2D by making Dynamic Scan feel like a conventional Wi-Fi analyzer
+while preserving Yeyecatl's explicit distinction between a scan request and a
+fresh RF observation.
+
+## Analyzer-style polling presets
+
+Expose a compact Polling interval control with these presets:
+
+```text
+1 s   2 s   5 s   10 s   30 s
+```
+
+Default: **5 s**.
+
+The preset model deliberately favors quick, recognizable analyzer-style choices
+rather than an arbitrary numeric text field.
+
+## Android throttling semantics
+
+The selected interval controls how often Yeyecatl attempts a foreground scan
+request. It does not guarantee that Android accepts every request or produces a
+new RF snapshot.
+
+Keep the existing truth model:
+
+- request counter = requests issued by Yeyecatl;
+- request rejection/throttling = platform outcome;
+- Fresh / Cached / Unknown = result freshness;
+- passive scan broadcasts remain valid observations when Android provides them.
+
+Short intervals are therefore best-effort polling controls.
+
+## Interaction
+
+- show Polling interval near the Dynamic Scan control;
+- allow choosing the cadence before Dynamic Scan starts;
+- keep the selected interval visible while scanning;
+- changing interval while Dynamic Scan is running resets the current countdown
+  and schedules the next request using the new interval;
+- changing the interval must not itself issue an extra immediate scan;
+- progress bar and Next scan countdown use the selected cadence;
+- restarting Dynamic Scan resets the request counter but preserves the selected
+  polling interval.
+
+## Persistence
+
+Persist the selected polling interval as an app preference so a user choosing
+5 s, 10 s or another preset gets the same cadence on the next launch.
+
+Unknown or obsolete persisted values fall back to 5 s.
+
+## Cadence domain behavior
+
+Extend WifiForegroundScanCadence so its interval can be changed safely at
+runtime.
+
+Required behavior:
+
+- interval must remain positive;
+- interval changes while disabled only update configuration;
+- interval changes while enabled/backgrounded update configuration without
+  requesting a scan;
+- interval changes while enabled/foregrounded cancel the pending timer and
+  schedule the next request at the new interval;
+- no extra immediate request is emitted solely because interval changed;
+- enable behavior remains: first dynamic request is immediate;
+- foreground leave/re-enter behavior remains intact.
+
+## UI
+
+Use responsive chips/buttons consistent with the Phase 2D.3 control language.
+
+Suggested presentation:
+
+```text
+Polling interval
+[ 1 s ] [ 2 s ] [ 5 s ] [ 10 s ] [ 30 s ]
+
+Dynamic scan                         Scans: 6
+██████████████░░░░░░░░░░░░░░░░░░
+Next scan in 3s · 5s polling
+```
+
+Keep the existing Android throttling explanation concise and visible.
+
+## Tests
+
+Add or update tests for:
+
+- default 5 s cadence;
+- selecting every supported polling preset;
+- live interval change reschedules without an immediate request;
+- interval persistence and invalid-value fallback;
+- progress/countdown presentation uses selected interval;
+- request counter reset behavior remains correct;
+- existing static scan, BSSID selection and nearby-network behavior are
+  unaffected.
+
+## Device validation
+
+Validate on both physical devices:
+
+```text
+make device-smoke-j8
+make device-smoke-g41
+```
+
+On the G41, test at least 1 s, 5 s and 30 s.
+
+Acceptance should explicitly observe that short polling intervals may produce
+rejected/cached behavior under Android throttling while Yeyecatl continues to
+report request count and freshness honestly.
+
+## Phase boundary
+
+Phase 2D.4 is the final Phase 2D feature block. After physical-device acceptance,
+freeze the evidence and move to release/archaeology work rather than adding
+further Dynamic Scan scope.
