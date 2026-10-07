@@ -136,7 +136,7 @@ class YeyecatlAppTest {
                         ssid = firstSsid,
                         rssiDbm = -40,
                         frequencyMhz = 2412,
-                        observedAtMillis = 1_000L
+                        observedAtMillis = nowMillis
                     ),
                     WifiSignalSample(
                         bssid = "00:00:00:00:00:01",
@@ -225,6 +225,7 @@ class YeyecatlAppTest {
 
     @Test
     fun signalHistoryFollowsCurrentSignalScope() = runComposeUiTest {
+        val nowMillis = System.currentTimeMillis()
         val observations = (1..7).map { index ->
             observation(
                 ssid = "network-$index",
@@ -341,6 +342,7 @@ class YeyecatlAppTest {
 
     @Test
     fun nearbyNetworkSelectionShowsBssidDetailAndCanBeCleared() = runComposeUiTest {
+        val nowMillis = System.currentTimeMillis()
         val selectedBssid = "00:00:00:00:00:01"
         val observation = observation(
             ssid = "whanganui",
@@ -356,14 +358,14 @@ class YeyecatlAppTest {
                         ssid = observation.ssid,
                         rssiDbm = -45,
                         frequencyMhz = 2412,
-                        observedAtMillis = 1_000L
+                        observedAtMillis = nowMillis - 2_000L
                     ),
                     WifiSignalSample(
                         bssid = selectedBssid,
                         ssid = observation.ssid,
                         rssiDbm = -42,
                         frequencyMhz = 2412,
-                        observedAtMillis = 3_000L
+                        observedAtMillis = nowMillis
                     )
                 )
             )
