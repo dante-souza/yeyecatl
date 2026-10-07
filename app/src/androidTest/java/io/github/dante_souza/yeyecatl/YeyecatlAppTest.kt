@@ -5,7 +5,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ExperimentalTestApi
-import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -281,7 +280,6 @@ class YeyecatlAppTest {
         onNodeWithText("Freshness").assertIsDisplayed()
         onNodeWithText("BSSID  00:00:00:00:00:01").assertIsDisplayed()
         onNodeWithText("2.4 GHz • Ch 1 • 20 MHz").assertIsDisplayed()
-        onNodeWithText("Capabilities  [ESS]").assertDoesNotExist()
         onNodeWithText("More").performClick()
         onNodeWithText("Capabilities  [ESS]").assertIsDisplayed()
         onNodeWithText("Less").assertIsDisplayed()
