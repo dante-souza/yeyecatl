@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -310,6 +311,16 @@ class YeyecatlAppTest {
         }
 
         onNodeWithContentDescription("Select access point $selectedBssid").performClick()
+        onNodeWithContentDescription(
+            "2.4 GHz Wi-Fi spectrum chart with 1 observed access points; " +
+                "selected BSSID $selectedBssid"
+        ).assertExists()
+        onNodeWithContentDescription(
+            "2.4 GHz signal history chart with 1 BSSID series and 2 samples; " +
+                "selected BSSID $selectedBssid"
+        ).assertExists()
+        onNodeWithText("Selected BSSID").assertExists()
+        onNodeWithText("0 geometric overlap neighbor(s) in this band").assertExists()
         onNodeWithText("Selected access point").assertIsDisplayed()
         onNodeWithText("Selected").assertIsDisplayed()
         onNodeWithText("Primary frequency").assertIsDisplayed()
