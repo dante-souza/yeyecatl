@@ -317,8 +317,6 @@ private fun ScanResults(
 
     val selectedDetail = focusedDetail
         ?.takeIf { it.selection.bssid == selectedBssid }
-    val selectedRowVisible = selectedBssid != null &&
-        visibleObservations.any { it.bssid == selectedBssid }
 
     BandSelector(
         selectedBand = selectedBand,
@@ -394,6 +392,20 @@ private fun ScanResults(
     ReadinessRow("Visible networks", visibleObservations.size.toString())
     ReadinessRow("Freshness", snapshot.freshness.label())
 
+    if (selectedDetail != null) {
+        Text(
+            text = "Focused selection",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 14.dp)
+        )
+        WifiObservationDetailCard(
+            detail = selectedDetail,
+            onClearSelection = { selectedBssid = null },
+            modifier = Modifier.padding(top = 6.dp, bottom = 4.dp)
+        )
+    }
+
     if (visibleObservations.isEmpty()) {
         Text(
             text = "No networks match the current filters.",
@@ -419,30 +431,10 @@ private fun ScanResults(
                     },
                     modifier = Modifier.padding(top = 10.dp)
                 )
-                if (isSelected && selectedDetail != null) {
-                    WifiObservationDetailCard(
-                        detail = selectedDetail,
-                        onClearSelection = { selectedBssid = null },
-                        modifier = Modifier.padding(top = 6.dp)
-                    )
-                }
             }
         }
     }
 
-    if (selectedDetail != null && !selectedRowVisible) {
-        Text(
-            text = "Focused selection",
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 14.dp)
-        )
-        WifiObservationDetailCard(
-            detail = selectedDetail,
-            onClearSelection = { selectedBssid = null },
-            modifier = Modifier.padding(top = 6.dp)
-        )
-    }
 }
 
 @Composable
