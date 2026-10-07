@@ -11,7 +11,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -27,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiBand
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanObservation
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiTemporalObservationHistory
+import kotlinx.coroutines.delay
 
 @Composable
 fun WifiSignalHistoryChart(
@@ -34,6 +39,7 @@ fun WifiSignalHistoryChart(
     observations: List<WifiScanObservation>,
     band: WifiBand,
     selectedBssid: String? = null,
+    pollingIntervalMillis: Long = 5_000L,
     modifier: Modifier = Modifier
 ) {
     val series = remember(history, observations, band) {
@@ -43,11 +49,29 @@ fun WifiSignalHistoryChart(
             band = band
         )
     }
-    val viewport = remember(series) {
-        WifiSignalHistoryProjection.viewport(series)
+    var nowMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(HISTORY_CLOCK_TICK_MILLIS)
+            nowMillis = System.currentTimeMillis()
+        }
     }
 
-    if (series.isEmpty() || viewport == null) {
+    val viewport = remember(nowMillis) {
+        WifiSignalHistoryProjection.rollingViewport(nowMillis)
+    }
+    val visibleSeries = remember(series, viewport) {
+        series.mapNotNull { visualSeries ->
+            val visiblePoints = WifiSignalHistoryProjection.visiblePoints(
+                points = visualSeries.points,
+                viewport = viewport
+            )
+            visualSeries.takeIf { visiblePoints.isNotEmpty() }
+                ?.copy(points = visiblePoints)
+        }
+    }
+
+    if (visibleSeries.isEmpty()) {
         Box(
             modifier = modifier
                 .fillMaxWidth()
@@ -71,7 +95,7 @@ fun WifiSignalHistoryChart(
         MaterialTheme.colorScheme.primaryContainer,
         MaterialTheme.colorScheme.secondaryContainer
     )
-    val sampleCount = series.sumOf { it.points.size }
+    val sampleCount = visibleSeries.sumOf { it.points.size }
 
     Column(modifier = modifier.fillMaxWidth()) {
         Canvas(
@@ -82,9 +106,9 @@ fun WifiSignalHistoryChart(
                 .semantics {
                     contentDescription = buildString {
                         append("${band.label()} signal history chart with ")
-                        append("${series.size} BSSID series and $sampleCount samples")
+                        append("${visibleSeries.size} BSSID series and $sampleCount samples")
                         if (selectedBssid != null &&
-                            series.any { it.bssid == selectedBssid }
+                            visibleSeries.any { it.bssid == selectedBssid }
                         ) {
                             append("; selected BSSID ")
                             append(selectedBssid)
@@ -147,7 +171,7 @@ fun WifiSignalHistoryChart(
             drawLine(axisColor, Offset(plotLeft, plotBottom), Offset(plotRight, plotBottom))
             drawLine(axisColor, Offset(plotLeft, plotTop), Offset(plotLeft, plotBottom))
 
-            val orderedSeries = series.sortedBy {
+            val orderedSeries = visibleSeries.sortedBy {
                 it.bssid == selectedBssid
             }
 
@@ -158,56 +182,67 @@ fun WifiSignalHistoryChart(
                 val color = if (isDimmed) baseColor.copy(alpha = 0.3f) else baseColor
                 val strokeWidth = if (isSelected) 4.dp.toPx() else 2.dp.toPx()
                 val pointRadius = if (isSelected) 5.dp.toPx() else 3.dp.toPx()
-                val offsets = visualSeries.points.map { point ->
-                    Offset(
-                        x = plotLeft + WifiSignalHistoryProjection.timeToX(
-                            observedAtMillis = point.observedAtMillis,
-                            viewport = viewport,
-                            widthPx = plotWidth
-                        ),
-                        y = plotTop + WifiSignalHistoryProjection.rssiToY(
-                            rssiDbm = point.rssiDbm,
-                            viewport = viewport,
-                            heightPx = plotHeight
+                val maxGapMillis = maxOf(
+                    WifiSignalHistoryProjection.MIN_LINE_GAP_THRESHOLD_MILLIS,
+                    pollingIntervalMillis * HISTORY_GAP_MULTIPLIER
+                )
+                val pointSegments = WifiSignalHistoryProjection.contiguousSegments(
+                    points = visualSeries.points,
+                    maxGapMillis = maxGapMillis
+                )
+
+                pointSegments.forEach { segment ->
+                    val offsets = segment.map { point ->
+                        Offset(
+                            x = plotLeft + WifiSignalHistoryProjection.timeToX(
+                                observedAtMillis = point.observedAtMillis,
+                                viewport = viewport,
+                                widthPx = plotWidth
+                            ),
+                            y = plotTop + WifiSignalHistoryProjection.rssiToY(
+                                rssiDbm = point.rssiDbm,
+                                viewport = viewport,
+                                heightPx = plotHeight
+                            )
                         )
-                    )
-                }
-
-                if (offsets.size > 1) {
-                    val path = Path().apply {
-                        moveTo(offsets.first().x, offsets.first().y)
-                        offsets.drop(1).forEach { point ->
-                            lineTo(point.x, point.y)
-                        }
                     }
-                    drawPath(
-                        path = path,
-                        color = color,
-                        style = Stroke(width = strokeWidth)
-                    )
-                }
 
-                offsets.forEach { point ->
-                    drawCircle(
-                        color = color,
-                        radius = pointRadius,
-                        center = point
-                    )
+                    if (offsets.size > 1) {
+                        val path = Path().apply {
+                            moveTo(offsets.first().x, offsets.first().y)
+                            offsets.drop(1).forEach { point ->
+                                lineTo(point.x, point.y)
+                            }
+                        }
+                        drawPath(
+                            path = path,
+                            color = color,
+                            style = Stroke(width = strokeWidth)
+                        )
+                    }
+
+                    offsets.forEach { point ->
+                        drawCircle(
+                            color = color,
+                            radius = pointRadius,
+                            center = point
+                        )
+                    }
                 }
             }
         }
 
-        if (series.size <= MAX_LEGEND_SERIES) {
+        if (visibleSeries.size <= MAX_LEGEND_SERIES) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 48.dp, end = 8.dp, top = 8.dp)
                     .semantics {
-                        contentDescription = "Signal history legend with ${series.size} series"
+                        contentDescription = "Signal history legend with ${visibleSeries.size} series"
                     },
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                series.sortedBy { it.bssid == selectedBssid }.forEach { visualSeries ->
+                visibleSeries.sortedBy { it.bssid == selectedBssid }.forEach { visualSeries ->
                     val baseColor = palette[colorIndex(visualSeries.colorKey, palette.size)]
                     val isSelected = selectedBssid != null && visualSeries.bssid == selectedBssid
                     val isDimmed = selectedBssid != null && !isSelected
@@ -279,3 +314,5 @@ private fun WifiBand.label(): String =
     }
 
 private const val MAX_LEGEND_SERIES = 5
+private const val HISTORY_CLOCK_TICK_MILLIS = 1_000L
+private const val HISTORY_GAP_MULTIPLIER = 3L
