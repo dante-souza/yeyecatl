@@ -376,8 +376,12 @@ class YeyecatlAppTest {
 
         onNodeWithContentDescription("Select access point $selectedBssid").performClick()
         waitForIdle()
+        onNodeWithText("Focused selection").assertIsDisplayed()
         onNodeWithText("Selected access point").assertIsDisplayed()
-        onNodeWithText("Not seen in latest scan", substring = true).assertIsNotDisplayed()
+        onNodeWithText("Latest scan").assertIsDisplayed()
+        onNodeWithText("Seen").assertIsDisplayed()
+        onNodeWithText("Last seen").assertIsDisplayed()
+        onNodeWithText("now").assertIsDisplayed()
 
         state = resultsState(
             observations = listOf(other),
@@ -386,11 +390,11 @@ class YeyecatlAppTest {
         waitForIdle()
 
         onNodeWithText("Focused selection").assertIsDisplayed()
-        onNodeWithText(
-            "Not seen in latest scan · showing last known observation"
-        ).assertIsDisplayed()
-        onNodeWithText("Last observed RSSI").assertIsDisplayed()
+        onNodeWithText("Latest scan").assertIsDisplayed()
+        onNodeWithText("Not seen").assertIsDisplayed()
+        onNodeWithText("Last seen").assertIsDisplayed()
         onNodeWithText("30s ago").assertIsDisplayed()
+        onNodeWithText("Observed RSSI").assertIsDisplayed()
         onNodeWithText("Clear selection").assertIsDisplayed()
 
         state = resultsState(
@@ -399,9 +403,13 @@ class YeyecatlAppTest {
         )
         waitForIdle()
 
-        onNodeWithText("Not seen in latest scan", substring = true).assertIsNotDisplayed()
+        onNodeWithText("Focused selection").assertIsDisplayed()
+        onNodeWithText("Latest scan").assertIsDisplayed()
+        onNodeWithText("Seen").assertIsDisplayed()
+        onNodeWithText("Last seen").assertIsDisplayed()
+        onNodeWithText("now").assertIsDisplayed()
         onNodeWithText("-39 dBm").assertIsDisplayed()
-        onNodeWithText("RSSI").assertIsDisplayed()
+        onNodeWithText("Observed RSSI").assertIsDisplayed()
     }
 
     @Test
