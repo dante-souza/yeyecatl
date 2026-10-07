@@ -19,6 +19,21 @@ Default: **5 s**.
 The preset model deliberately favors quick, recognizable analyzer-style choices
 rather than an arbitrary numeric text field.
 
+## Physical-test finding — request count versus history
+
+Moto G41 testing at a 5 s polling interval exposed an important presentation
+ambiguity: the old `Scans: N` label counted timer-driven scan requests, while
+Signal history only advanced when Android delivered a Fresh result update.
+
+Phase 2D.4 therefore uses separate counters:
+
+- **Requests** — polling requests issued by Yeyecatl in the current dynamic session;
+- **Fresh updates** — fresh snapshots that actually contributed temporal samples.
+
+The Fresh updates counter is the session-level number expected to correlate with
+history growth. A particular BSSID can still have fewer plotted points when it
+is absent from some fresh snapshots.
+
 ## Android throttling semantics
 
 The selected interval controls how often Yeyecatl attempts a foreground scan
