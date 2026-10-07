@@ -253,6 +253,7 @@ fun YeyecatlReadinessScreen(
                 requestCount = dynamicScanRequestCount,
                 freshUpdateCount = dynamicScanFreshUpdateCount,
                 intervalMillis = dynamicScanIntervalMillis,
+                lastRequestRejected = scanState is WifiScanState.RequestRejected,
                 modifier = Modifier.padding(top = 10.dp)
             )
         }
@@ -263,14 +264,17 @@ fun YeyecatlReadinessScreen(
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(top = 28.dp)
         )
-        ReadinessRow("Scan state", scanState.label())
+        ReadinessRow(
+            "Scan state",
+            scanState.observationLabel(dynamicScanEnabled)
+        )
         ReadinessRow("Dynamic scan", if (dynamicScanEnabled) "Running" else "Stopped")
         ReadinessRow("Tracked BSSIDs", temporalHistory.samplesByBssid.size.toString())
         ReadinessRow(
             "Signal samples",
             temporalHistory.samplesByBssid.values.sumOf { it.size }.toString()
         )
-        scanState.message()?.let {
+        scanState.message(dynamicScanEnabled)?.let {
             Text(
                 text = it,
                 style = MaterialTheme.typography.bodyMedium,
@@ -333,6 +337,7 @@ private fun DynamicScanProgress(
     requestCount: Int,
     freshUpdateCount: Int,
     intervalMillis: Long,
+    lastRequestRejected: Boolean,
     modifier: Modifier = Modifier
 ) {
     val safeIntervalMillis = intervalMillis.coerceAtLeast(1L)
@@ -408,7 +413,11 @@ private fun DynamicScanProgress(
                 softWrap = false
             )
             Text(
-                text = "History advances only on fresh result updates; Android may reject or throttle requests.",
+                text = if (lastRequestRejected) {
+                    "Last request throttled/rejected by Android · history remains on the last fresh result."
+                } else {
+                    "History advances only on fresh result updates; Android may reject or throttle requests."
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 minLines = 2,
@@ -791,19 +800,25 @@ private fun ScannerImplementationStatus.label(): String =
         ScannerImplementationStatus.NotImplemented -> "Not implemented"
     }
 
-private fun WifiScanState.label(): String =
+private fun WifiScanState.observationLabel(dynamicScanEnabled: Boolean): String =
     when (this) {
         WifiScanState.Idle -> "Idle"
         is WifiScanState.ScanRequested -> "Scan requested"
         is WifiScanState.Results -> "Results available"
-        is WifiScanState.RequestRejected -> "Request rejected"
+        is WifiScanState.RequestRejected ->
+            if (dynamicScanEnabled && latestSnapshot != null) {
+                "Results available"
+            } else {
+                "Request rejected"
+            }
         is WifiScanState.Blocked -> reason.label()
         is WifiScanState.Error -> "Error"
     }
 
-private fun WifiScanState.message(): String? =
+private fun WifiScanState.message(dynamicScanEnabled: Boolean): String? =
     when (this) {
-        is WifiScanState.RequestRejected -> message
+        is WifiScanState.RequestRejected ->
+            message.takeUnless { dynamicScanEnabled && latestSnapshot != null }
         is WifiScanState.Error -> message
         else -> null
     }
