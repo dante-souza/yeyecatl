@@ -67,6 +67,16 @@ The focused chart does not inherit those global filters because its scope is the
 
 Its vertical scale is also intentionally independent from the global multi-BSSID chart. The global chart keeps a common comparison scale, while the focused chart adapts to the retained RSSI range for the selected BSSID so strong signals above -30 dBm are not visually clamped.
 
+### Sticky focused session
+
+Physical-device validation showed that a selected BSSID may be transiently absent from an Android scan. Phase 2C.2 therefore upgrades selection from a one-snapshot expansion to a sticky in-memory focused session.
+
+If the selected BSSID is missed by a later scan, Yeyecatl keeps the detail panel open using the last known normalized observation and retained temporal history. The panel is explicitly marked **Not seen in latest scan** and current RSSI wording changes to **Last observed RSSI**. When the BSSID reappears, live/current detail resumes automatically.
+
+Nearby-network filters and sorting also do not clear the focused session. If the selected row is hidden by the current query, the focused detail remains available separately below the list.
+
+The focused session ends only when the user clears it, selects another BSSID, or the in-memory application/session state is reset.
+
 ## Truthfulness constraints
 
 Phase 2C.2 deliberately avoids claims that the current in-memory model cannot support:
