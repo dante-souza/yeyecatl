@@ -374,18 +374,24 @@ private fun DynamicScanProgress(
                 Text(
                     text = "Dynamic scan",
                     style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    softWrap = false
                 )
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "Requests: $requestCount",
                         style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        softWrap = false
                     )
                     Text(
                         text = "Fresh updates: $freshUpdateCount",
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }
@@ -396,12 +402,17 @@ private fun DynamicScanProgress(
             Text(
                 text = "Next scan in ${remainingSeconds}s · ${intervalSeconds}s polling",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                minLines = 1,
+                maxLines = 1,
+                softWrap = false
             )
             Text(
                 text = "History advances only on fresh result updates; Android may reject or throttle requests.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                minLines = 2,
+                maxLines = 2
             )
         }
     }
