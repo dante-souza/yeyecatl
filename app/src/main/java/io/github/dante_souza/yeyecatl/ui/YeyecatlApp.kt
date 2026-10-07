@@ -19,9 +19,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -34,6 +36,7 @@ import io.github.dante_souza.yeyecatl.R
 import io.github.dante_souza.yeyecatl.domain.wifi.ObservedSsid
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiBand
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationDetail
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationDetailResolver
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationQuery
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationSelection
@@ -278,7 +281,8 @@ private fun ScanResults(
     var observationSortName by rememberSaveable {
         mutableStateOf(WifiObservationSort.PlatformOrder.name)
     }
-    var selectedBssid by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedBssid by remember { mutableStateOf<String?>(null) }
+    var focusedDetail by remember { mutableStateOf<WifiObservationDetail?>(null) }
 
     val selectedBand = WifiBand.valueOf(selectedBandName)
     val selectedSignalScope = WifiSignalScope.valueOf(selectedSignalScopeName)
@@ -301,13 +305,20 @@ private fun ScanResults(
         )
     )
     val sameSsidCounts = sameSsidBssidCounts(snapshot.observations)
-    val selectedDetail = selectedBssid?.let { bssid ->
-        WifiObservationDetailResolver.resolve(
-            selection = WifiObservationSelection(bssid),
+
+    LaunchedEffect(selectedBssid, snapshot.receivedAtMillis, temporalHistory) {
+        focusedDetail = WifiObservationDetailResolver.resolve(
+            selection = selectedBssid?.let(::WifiObservationSelection),
             snapshot = snapshot,
-            history = temporalHistory
+            history = temporalHistory,
+            previousDetail = focusedDetail
         )
     }
+
+    val selectedDetail = focusedDetail
+        ?.takeIf { it.selection.bssid == selectedBssid }
+    val selectedRowVisible = selectedBssid != null &&
+        visibleObservations.any { it.bssid == selectedBssid }
 
     BandSelector(
         selectedBand = selectedBand,
@@ -417,6 +428,20 @@ private fun ScanResults(
                 }
             }
         }
+    }
+
+    if (selectedDetail != null && !selectedRowVisible) {
+        Text(
+            text = "Focused selection",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 14.dp)
+        )
+        WifiObservationDetailCard(
+            detail = selectedDetail,
+            onClearSelection = { selectedBssid = null },
+            modifier = Modifier.padding(top = 6.dp)
+        )
     }
 }
 
