@@ -20,6 +20,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -59,6 +60,7 @@ import io.github.dante_souza.yeyecatl.platform.wifi.WifiPowerStatus
 import io.github.dante_souza.yeyecatl.ui.history.WifiSignalHistoryChart
 import io.github.dante_souza.yeyecatl.ui.networks.WifiObservationListItem
 import io.github.dante_souza.yeyecatl.ui.networks.WifiObservationQueryControls
+import io.github.dante_souza.yeyecatl.ui.networks.sameSsidBssidCounts
 import io.github.dante_souza.yeyecatl.ui.signal.WifiSignalRankingCard
 import io.github.dante_souza.yeyecatl.ui.spectrum.WifiSpectrumChart
 import io.github.dante_souza.yeyecatl.ui.theme.YeyecatlTheme
@@ -294,6 +296,7 @@ private fun ScanResults(
             sort = observationSort
         )
     )
+    val sameSsidCounts = sameSsidBssidCounts(snapshot.observations)
 
     BandSelector(
         selectedBand = selectedBand,
@@ -377,11 +380,18 @@ private fun ScanResults(
             modifier = Modifier.padding(top = 8.dp)
         )
     } else {
-        visibleObservations.forEach { observation ->
-            WifiObservationListItem(
-                observation = observation,
-                modifier = Modifier.padding(top = 10.dp)
-            )
+        visibleObservations.forEachIndexed { index, observation ->
+            val observationKey = observation.bssid
+                ?: "${observation.ssid.displayText}:${observation.frequencyMhz}:$index"
+            key(observationKey) {
+                WifiObservationListItem(
+                    observation = observation,
+                    sameSsidBssidCount = observation.ssid.displayText
+                        ?.let { sameSsidCounts[it] }
+                        ?: 0,
+                    modifier = Modifier.padding(top = 10.dp)
+                )
+            }
         }
     }
 }

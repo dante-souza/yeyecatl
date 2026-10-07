@@ -79,6 +79,44 @@ class WifiObservationPresentationTest {
         assertEquals("Capabilities  not reported", presentation.capabilitiesSummary)
     }
 
+    @Test
+    fun countsDistinctBssidsForExactNamedSsidOnly() {
+        val observations = listOf(
+            observation(
+                ssid = "mesh",
+                bssid = "00:00:00:00:00:01",
+                rssiDbm = -40,
+                frequencyMhz = 2412,
+                width = WifiChannelWidth.Mhz20,
+                standard = WifiStandard.Unknown,
+                capabilities = "[ESS]"
+            ),
+            observation(
+                ssid = "mesh",
+                bssid = "00:00:00:00:00:02",
+                rssiDbm = -50,
+                frequencyMhz = 2437,
+                width = WifiChannelWidth.Mhz20,
+                standard = WifiStandard.Unknown,
+                capabilities = "[ESS]"
+            ),
+            observation(
+                ssid = "Mesh",
+                bssid = "00:00:00:00:00:03",
+                rssiDbm = -60,
+                frequencyMhz = 2462,
+                width = WifiChannelWidth.Mhz20,
+                standard = WifiStandard.Unknown,
+                capabilities = "[ESS]"
+            )
+        )
+
+        assertEquals(
+            mapOf("mesh" to 2, "Mesh" to 1),
+            sameSsidBssidCounts(observations)
+        )
+    }
+
     private fun observation(
         ssid: String,
         bssid: String,

@@ -156,6 +156,30 @@ This is a presentation-only refinement. It does not change filtering, sorting,
 signal ranking, temporal history, observation identity, RF interpretation or the
 underlying scan snapshot.
 
+### Expandable observation card
+
+The compact card is the default state so a crowded scan remains easy to skim.
+Its visible summary is limited to:
+
+- SSID;
+- RSSI;
+- BSSID;
+- band, channel, channel width and a known Wi-Fi standard.
+
+A `More` action expands the same card vertically. The expanded state reveals:
+
+- the full raw Android capability string without line-count truncation;
+- the count of distinct BSSIDs in the latest unfiltered snapshot advertising the
+  exact same display SSID, when more than one exists.
+
+The SSID/BSSID count is intentionally exact and case-sensitive. Hidden or
+unavailable SSIDs are not grouped together, and duplicate occurrences of the same
+BSSID count once.
+
+`Less` collapses the card back to the compact summary. Expansion is presentation
+state only and does not modify filtering, sorting, the snapshot, or temporal
+history.
+
 ## Required Tests
 
 Deterministic JVM tests cover:

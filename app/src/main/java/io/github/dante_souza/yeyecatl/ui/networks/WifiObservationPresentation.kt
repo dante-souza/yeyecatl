@@ -69,3 +69,19 @@ object WifiObservationPresenter {
             WifiStandard.Unknown -> null
         }
 }
+
+
+fun sameSsidBssidCounts(
+    observations: List<WifiScanObservation>
+): Map<String, Int> =
+    observations
+        .mapNotNull { observation ->
+            val ssid = observation.ssid.displayText ?: return@mapNotNull null
+            val bssid = observation.bssid ?: return@mapNotNull null
+            ssid to bssid
+        }
+        .groupBy(
+            keySelector = { it.first },
+            valueTransform = { it.second }
+        )
+        .mapValues { (_, bssids) -> bssids.distinct().size }
