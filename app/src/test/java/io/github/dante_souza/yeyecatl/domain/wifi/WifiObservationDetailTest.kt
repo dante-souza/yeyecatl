@@ -107,6 +107,118 @@ class WifiObservationDetailTest {
     }
 
     @Test
+    fun keepsPreviousDetailWhenSelectedBssidIsMissingFromLatestSnapshot() {
+        val selected = observation(
+            ssid = "mesh",
+            bssid = "00:00:00:00:00:01",
+            rssiDbm = -42,
+            frequencyMhz = 2412
+        )
+        val firstSnapshot = WifiScanSnapshot(
+            observations = listOf(selected),
+            freshness = WifiScanFreshness.Fresh,
+            source = WifiScanResultSource.ApplicationRequest,
+            resultsUpdated = true,
+            receivedAtMillis = 5_000L
+        )
+        val firstHistory = WifiTemporalObservationHistory(
+            samplesByBssid = mapOf(
+                "00:00:00:00:00:01" to listOf(
+                    sample(selected, -42, 5_000L)
+                )
+            )
+        )
+        val initial = WifiObservationDetailResolver.resolve(
+            selection = WifiObservationSelection("00:00:00:00:00:01"),
+            snapshot = firstSnapshot,
+            history = firstHistory
+        )
+        requireNotNull(initial)
+
+        val missingSnapshot = WifiScanSnapshot(
+            observations = listOf(
+                observation(
+                    ssid = "other",
+                    bssid = "00:00:00:00:00:02",
+                    rssiDbm = -60,
+                    frequencyMhz = 2437
+                )
+            ),
+            freshness = WifiScanFreshness.Fresh,
+            source = WifiScanResultSource.ApplicationRequest,
+            resultsUpdated = true,
+            receivedAtMillis = 35_000L
+        )
+        val retained = WifiObservationDetailResolver.resolve(
+            selection = WifiObservationSelection("00:00:00:00:00:01"),
+            snapshot = missingSnapshot,
+            history = firstHistory,
+            previousDetail = initial
+        )
+
+        requireNotNull(retained)
+        assertEquals(selected, retained.latestObservation)
+        assertEquals(false, retained.observedInLatestSnapshot)
+        assertEquals(5_000L, retained.lastSeenAtMillis)
+        assertEquals(35_000L, retained.latestSnapshotReceivedAtMillis)
+    }
+
+    @Test
+    fun selectedBssidReturningToScanRefreshesStickyDetail() {
+        val selected = observation(
+            ssid = "mesh",
+            bssid = "00:00:00:00:00:01",
+            rssiDbm = -50,
+            frequencyMhz = 2412
+        )
+        val initial = WifiObservationDetailResolver.resolve(
+            selection = WifiObservationSelection("00:00:00:00:00:01"),
+            snapshot = WifiScanSnapshot(
+                observations = listOf(selected),
+                freshness = WifiScanFreshness.Fresh,
+                source = WifiScanResultSource.ApplicationRequest,
+                resultsUpdated = true,
+                receivedAtMillis = 5_000L
+            ),
+            history = WifiTemporalObservationHistory()
+        )
+        requireNotNull(initial)
+
+        val missing = WifiObservationDetailResolver.resolve(
+            selection = initial.selection,
+            snapshot = WifiScanSnapshot(
+                observations = emptyList(),
+                freshness = WifiScanFreshness.Fresh,
+                source = WifiScanResultSource.ApplicationRequest,
+                resultsUpdated = true,
+                receivedAtMillis = 35_000L
+            ),
+            history = WifiTemporalObservationHistory(),
+            previousDetail = initial
+        )
+        requireNotNull(missing)
+
+        val returnedObservation = selected.copy(rssiDbm = -44)
+        val returned = WifiObservationDetailResolver.resolve(
+            selection = initial.selection,
+            snapshot = WifiScanSnapshot(
+                observations = listOf(returnedObservation),
+                freshness = WifiScanFreshness.Fresh,
+                source = WifiScanResultSource.ApplicationRequest,
+                resultsUpdated = true,
+                receivedAtMillis = 65_000L
+            ),
+            history = WifiTemporalObservationHistory(),
+            previousDetail = missing
+        )
+
+        requireNotNull(returned)
+        assertEquals(true, returned.observedInLatestSnapshot)
+        assertEquals(-44, returned.latestObservation.rssiDbm)
+        assertEquals(65_000L, returned.lastSeenAtMillis)
+    }
+
+    @Test
     fun blankSelectionIsRejected() {
         assertThrows(IllegalArgumentException::class.java) {
             WifiObservationSelection("   ")
