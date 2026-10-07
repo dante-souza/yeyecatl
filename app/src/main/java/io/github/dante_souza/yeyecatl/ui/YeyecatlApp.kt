@@ -282,6 +282,26 @@ fun YeyecatlReadinessScreen(
                 modifier = Modifier.padding(top = 8.dp)
             )
         }
+        if (readiness.isDiscoveryAllowed && scanState.latestSnapshot == null &&
+            (scanState == WifiScanState.Idle || scanState is WifiScanState.ScanRequested)
+        ) {
+            Text(
+                text = "Waiting for the first Wi-Fi scan… This may take a moment on Android.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 12.dp, bottom = 8.dp)
+            )
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        } else if (scanState.latestSnapshot == null &&
+            scanState is WifiScanState.RequestRejected
+        ) {
+            Text(
+                text = "No scan results yet. Android rejected the request; tap Scan Wi-Fi to retry.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
         ScanResults(
             snapshot = scanState.latestSnapshot,
             temporalHistory = temporalHistory,
