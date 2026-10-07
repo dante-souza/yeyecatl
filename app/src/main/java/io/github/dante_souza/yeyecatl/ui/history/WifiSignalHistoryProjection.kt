@@ -140,6 +140,23 @@ object WifiSignalHistoryProjection {
         return segments
     }
 
+    // Presentation-only endpoint. No sample is appended to temporal history.
+    // The hold expires rather than suggesting indefinitely fresh RF data.
+    fun heldEndpoint(
+        points: List<WifiSignalHistoryPoint>,
+        nowMillis: Long,
+        maxHoldMillis: Long
+    ): WifiSignalHistoryPoint? {
+        require(maxHoldMillis > 0L)
+        val latest = points.maxByOrNull { it.observedAtMillis } ?: return null
+        val age = nowMillis - latest.observedAtMillis
+        if (age < 0L || age >= maxHoldMillis) return null
+        return WifiSignalHistoryPoint(
+            observedAtMillis = nowMillis,
+            rssiDbm = latest.rssiDbm
+        )
+    }
+
     fun timeToX(
         observedAtMillis: Long,
         viewport: WifiSignalHistoryViewport,
