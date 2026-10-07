@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -98,6 +99,12 @@ fun WifiSignalHistoryChart(
     val sampleCount = visibleSeries.sumOf { it.points.size }
 
     Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = "Solid = measured · dashed = last-known (up to 15s) · blank = no recent data",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
+        )
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
@@ -229,6 +236,33 @@ fun WifiSignalHistoryChart(
                         )
                     }
                 }
+
+                // Only a faded dashed guide extends from the latest measured point.
+                // This does not add a stored RF sample and expires after 15 seconds.
+                val latest = visualSeries.points.maxByOrNull { it.observedAtMillis }
+                val held = WifiSignalHistoryProjection.heldEndpoint(
+                    points = visualSeries.points,
+                    nowMillis = nowMillis,
+                    maxHoldMillis = HISTORY_MAX_HOLD_MILLIS
+                )
+                if (latest != null && held != null && held.observedAtMillis > latest.observedAtMillis) {
+                    val heldY = plotTop + WifiSignalHistoryProjection.rssiToY(
+                        latest.rssiDbm, viewport, plotHeight
+                    )
+                    val fromX = plotLeft + WifiSignalHistoryProjection.timeToX(
+                        latest.observedAtMillis, viewport, plotWidth
+                    )
+                    val toX = plotLeft + WifiSignalHistoryProjection.timeToX(
+                        held.observedAtMillis, viewport, plotWidth
+                    )
+                    drawLine(
+                        color = color.copy(alpha = if (isSelected) 0.55f else 0.3f),
+                        start = Offset(fromX, heldY),
+                        end = Offset(toX, heldY),
+                        strokeWidth = strokeWidth,
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(7f, 7f))
+                    )
+                }
             }
         }
 
@@ -316,3 +350,4 @@ private fun WifiBand.label(): String =
 private const val MAX_LEGEND_SERIES = 5
 private const val HISTORY_CLOCK_TICK_MILLIS = 1_000L
 private const val HISTORY_GAP_MULTIPLIER = 3L
+private const val HISTORY_MAX_HOLD_MILLIS = 15_000L
