@@ -4,6 +4,7 @@ import android.os.SystemClock
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,6 +17,7 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -47,6 +49,7 @@ import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationQuery
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationSelection
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationQueryEngine
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationSort
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiPollingIntervalPolicy
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanBlockReason
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanFreshness
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanObservation
@@ -85,7 +88,8 @@ fun YeyecatlApp(
     temporalHistory: WifiTemporalObservationHistory = WifiTemporalObservationHistory(),
     dynamicScanEnabled: Boolean = false,
     dynamicScanRequestCount: Int = 0,
-    dynamicScanIntervalMillis: Long = 30_000L,
+    dynamicScanIntervalMillis: Long = WifiPollingIntervalPolicy.DEFAULT_INTERVAL_MILLIS,
+    onDynamicScanIntervalSelected: (Long) -> Unit = {},
     onRequestScan: () -> Unit = {},
     onToggleDynamicScan: () -> Unit = {},
     onRequestDiscoveryPermission: () -> Unit = {}
@@ -108,6 +112,7 @@ fun YeyecatlApp(
                     dynamicScanEnabled = dynamicScanEnabled,
                     dynamicScanRequestCount = dynamicScanRequestCount,
                     dynamicScanIntervalMillis = dynamicScanIntervalMillis,
+                    onDynamicScanIntervalSelected = onDynamicScanIntervalSelected,
                     onRequestScan = onRequestScan,
                     onToggleDynamicScan = onToggleDynamicScan,
                     onRequestDiscoveryPermission = onRequestDiscoveryPermission
@@ -160,6 +165,7 @@ fun YeyecatlReadinessScreen(
     dynamicScanEnabled: Boolean,
     dynamicScanRequestCount: Int,
     dynamicScanIntervalMillis: Long,
+    onDynamicScanIntervalSelected: (Long) -> Unit,
     onRequestScan: () -> Unit,
     onToggleDynamicScan: () -> Unit,
     onRequestDiscoveryPermission: () -> Unit,
@@ -223,12 +229,18 @@ fun YeyecatlReadinessScreen(
             Text("Scan Wi-Fi")
         }
 
+        PollingIntervalSelector(
+            selectedIntervalMillis = dynamicScanIntervalMillis,
+            onSelected = onDynamicScanIntervalSelected,
+            modifier = Modifier.padding(top = 14.dp)
+        )
+
         OutlinedButton(
             onClick = onToggleDynamicScan,
             enabled = readiness.isDiscoveryAllowed,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp)
+                .padding(top = 10.dp)
         ) {
             Text(if (dynamicScanEnabled) "Stop dynamic scan" else "Start dynamic scan")
         }
@@ -272,6 +284,42 @@ fun YeyecatlReadinessScreen(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 20.dp, bottom = 8.dp)
+        )
+    }
+}
+
+@Composable
+private fun PollingIntervalSelector(
+    selectedIntervalMillis: Long,
+    onSelected: (Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(7.dp)
+    ) {
+        Text(
+            text = "Polling interval",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold
+        )
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            WifiPollingIntervalPolicy.supportedIntervalsMillis.forEach { intervalMillis ->
+                FilterChip(
+                    selected = selectedIntervalMillis == intervalMillis,
+                    onClick = { onSelected(intervalMillis) },
+                    label = { Text(pollingIntervalLabel(intervalMillis)) }
+                )
+            }
+        }
+        Text(
+            text = "Best effort: Android may throttle rapid Wi-Fi scan requests.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -334,7 +382,7 @@ private fun DynamicScanProgress(
                 modifier = Modifier.fillMaxWidth()
             )
             Text(
-                text = "Next scan in ${remainingSeconds}s · ${intervalSeconds}s foreground cadence",
+                text = "Next scan in ${remainingSeconds}s · ${intervalSeconds}s polling",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -873,6 +921,9 @@ private fun previewObservation(
 private fun YeyecatlPlaceholderPreview() {
     YeyecatlApp(scanState = previewScanState())
 }
+
+private fun pollingIntervalLabel(intervalMillis: Long): String =
+    "${intervalMillis / 1_000L} s"
 
 private const val DYNAMIC_PROGRESS_TICK_MILLIS = 250L
 private const val ALL_BANDS_KEY = "all"
