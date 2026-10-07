@@ -146,15 +146,51 @@ Planned archaeological prerelease:
 v0.1.0-phase2c1-selection-detail.1
 ```
 
+## Archive and release record
+
+Original evidence commit:
+
+```text
+10b9caafc8249ae6af71125ae82fdc6cae9ee0bf
+docs: archive original Phase 2C.1 J8 evidence
+```
+
+Archive workflow:
+
+```text
+37608554767 — PASS
+```
+
+Published archaeological prerelease:
+
+```text
+v0.1.0-phase2c1-selection-detail.1
+Phase 2C.1 Selection + Detail Freeze — Galaxy J8
+GitHub release ID: 405651356
+Target: 0ee8f76a3f0cb048dca24d6d354e0d6ea75e3340
+```
+
+Release assets:
+
+- `yeyecatl-v0.1.0-phase2c1-selection-detail.1-debug.apk` — 29,646,096 bytes
+- `yeyecatl-phase-2c1-j8-spectrum-history.jpg` — 187,805 bytes
+- `yeyecatl-phase-2c1-j8-selection-detail.jpg` — 248,202 bytes
+- `phase-2c1-validation-record.md` — validation record
+- `SHA256SUMS.txt` — release-asset checksum manifest
+
+The archive workflow independently verified the two committed original evidence
+JPEGs against `SHA256SUMS-images.txt` before building or publishing the release.
+
 ## Status
 
 **DEVICE ACCEPTANCE: PASS**
 
 **IMPLEMENTATION INTEGRATION: COMPLETE**
 
-**ARCHAEOLOGY IMAGE ARCHIVE: awaiting exact binary commit**
+**ARCHAEOLOGY IMAGE ARCHIVE: COMPLETE**
 
-Once both JPEGs match the committed checksum manifest, the archive workflow
-builds the frozen APK from the immutable feature SHA and publishes the
-archaeological prerelease with APK, evidence images, validation record and
-release checksum manifest.
+**ARCHAEOLOGICAL PRERELEASE: PUBLISHED**
+
+The evidence branch is now a frozen preservation ref. It can be merged into
+`dev` with a normal merge commit so the validation record becomes part of the
+main development history without flattening or rewriting the archaeology.
