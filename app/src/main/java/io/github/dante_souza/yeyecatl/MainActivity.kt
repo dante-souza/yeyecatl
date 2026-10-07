@@ -57,6 +57,9 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        initialScanRequested = savedInstanceState
+            ?.getBoolean(KEY_INITIAL_SCAN_REQUESTED)
+            ?: false
         refreshReadiness()
         setContent {
             val scanState by wifiScanRepository.observeScanState().collectAsState()
@@ -93,6 +96,11 @@ class MainActivity : ComponentActivity() {
         wifiScanCadence.leaveForeground()
         wifiScanRepository.stop()
         super.onStop()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putBoolean(KEY_INITIAL_SCAN_REQUESTED, initialScanRequested)
+        super.onSaveInstanceState(outState)
     }
 
     private fun maybeRequestInitialScan() {
@@ -159,4 +167,8 @@ class MainActivity : ComponentActivity() {
             ),
             scanner = ScannerImplementationStatus.NotImplemented
         )
+
+    private companion object {
+        const val KEY_INITIAL_SCAN_REQUESTED = "initial_scan_requested"
+    }
 }
