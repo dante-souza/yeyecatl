@@ -29,6 +29,10 @@ object WifiSignalHistoryProjection {
     const val DEFAULT_ROLLING_WINDOW_MILLIS = 120_000L
     const val MIN_LINE_GAP_THRESHOLD_MILLIS = 15_000L
     private const val SINGLE_POINT_WINDOW_MILLIS = 30_000L
+    private const val MIN_STALE_HOLD_MILLIS = 15_000L
+    private const val MAX_STALE_HOLD_MILLIS = 90_000L
+    private const val MIN_STALE_GRACE_MILLIS = 10_000L
+    private const val MAX_STALE_GRACE_MILLIS = 30_000L
 
     fun series(
         history: WifiTemporalObservationHistory,
@@ -138,6 +142,29 @@ object WifiSignalHistoryProjection {
         }
 
         return segments
+    }
+
+    fun staleHoldMillis(pollingIntervalMillis: Long): Long {
+        require(pollingIntervalMillis > 0L) { "pollingIntervalMillis must be greater than zero" }
+        val graceMillis = (pollingIntervalMillis / 2L)
+            .coerceIn(MIN_STALE_GRACE_MILLIS, MAX_STALE_GRACE_MILLIS)
+        return (pollingIntervalMillis + graceMillis)
+            .coerceIn(MIN_STALE_HOLD_MILLIS, MAX_STALE_HOLD_MILLIS)
+    }
+
+    fun foregroundBssids(
+        series: List<WifiSignalHistoryVisualSeries>,
+        maxForegroundSeries: Int
+    ): Set<String> {
+        require(maxForegroundSeries > 0) { "maxForegroundSeries must be greater than zero" }
+        return series
+            .sortedWith(
+                compareByDescending<WifiSignalHistoryVisualSeries> {
+                    it.points.lastOrNull()?.rssiDbm ?: Int.MIN_VALUE
+                }.thenBy { it.bssid }
+            )
+            .take(maxForegroundSeries)
+            .mapTo(linkedSetOf()) { it.bssid }
     }
 
     // Presentation-only endpoint. No sample is appended to temporal history.
