@@ -1,0 +1,102 @@
+name: Archive Phase 2D.1 channel occupancy overlap
+
+on:
+  push:
+    branches:
+      - docs/phase-2d1-j8-evidence
+    paths:
+      - "docs/validation/phase-2d1/**"
+      - ".github/workflows/archive-phase-2d1-channel-occupancy-overlap.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  archive:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      FREEZE_SHA: 1136bb2dd861844cb16e46ac490ab25ec01a56a2
+      INTEGRATION_SHA: ac01e30eb17602dfb2923733048911813d353dc5
+      RELEASE_TAG: v0.1.0-phase2d1-channel-occupancy-overlap.1
+      APK_NAME: yeyecatl-v0.1.0-phase2d1-channel-occupancy-overlap.1-debug.apk
+      EVIDENCE_DIR: evidence/docs/validation/phase-2d1
+
+    steps:
+      - name: Check out archaeological evidence
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: docs/phase-2d1-j8-evidence
+          path: evidence
+
+      - name: Check out frozen implementation
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ env.FREEZE_SHA }}
+          path: source
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6.0.1
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Run frozen repository checks
+        shell: bash
+        run: |
+          cd source
+          make setup
+          make check
+
+      - name: Prepare release assets
+        shell: bash
+        run: |
+          mkdir -p release
+          cp source/app/build/outputs/apk/debug/app-debug.apk "release/$APK_NAME"
+          cp "$EVIDENCE_DIR/README.md" release/phase-2d1-validation-record.md
+          cp "$EVIDENCE_DIR/ORIGINAL-IMAGE-MANIFEST.md" release/ORIGINAL-IMAGE-MANIFEST.md
+          (
+            cd release
+            sha256sum "$APK_NAME" phase-2d1-validation-record.md ORIGINAL-IMAGE-MANIFEST.md > SHA256SUMS.txt
+          )
+          cat > release/RELEASE_NOTES.md <<'EOF'
+          # Yeyecatl — Phase 2D.1 Channel Occupancy + Overlap Freeze
+
+          Archaeological prerelease preserving the physically accepted Phase 2D.1 analyzer overview.
+
+          - Source freeze: `1136bb2dd861844cb16e46ac490ab25ec01a56a2`
+          - Integration commit: `ac01e30eb17602dfb2923733048911813d353dc5`
+          - Device validation: **PASS**
+          - Visual validation: **PASS**
+          - Device: Samsung Galaxy J8 / SM-J810M / Android 10
+          - Feature CI: **37657767151 — PASS**
+          - Integrated dev CI: **37667218512 — PASS**
+
+          Preserved behavior includes latest-scan per-channel AP counts, geometric RF-footprint
+          overlap pairs, average overlapping neighbors/AP, BSSID-distinct overlap endpoints,
+          partial-geometry disclosure, and an explicit boundary between observed AP occupancy
+          and true airtime/channel utilization.
+
+          The original physical-device photographs are identified by byte-level SHA-256,
+          dimensions and byte counts in `ORIGINAL-IMAGE-MANIFEST.md`. The connector used for
+          this archaeology run cannot ingest raw conversation-image bytes into Git, so no
+          regenerated image is substituted for an original photograph.
+
+          This milestone still produces no interference score, quality grade, best-channel
+          recommendation, distance estimate or router-configuration advice.
+          EOF
+
+      - name: Publish archaeological prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          assets=(release/"$APK_NAME" release/phase-2d1-validation-record.md release/ORIGINAL-IMAGE-MANIFEST.md release/SHA256SUMS.txt)
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --target "$FREEZE_SHA" --title "Phase 2D.1 Channel Occupancy + Overlap Freeze — Galaxy J8" --notes-file release/RELEASE_NOTES.md --prerelease
+            gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" "${assets[@]}" --clobber
+          else
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --target "$FREEZE_SHA" --title "Phase 2D.1 Channel Occupancy + Overlap Freeze — Galaxy J8" --notes-file release/RELEASE_NOTES.md --prerelease "${assets[@]}"
+          fi
