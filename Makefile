@@ -118,7 +118,7 @@ check: build unit-test android-test-build lint device-helpers-check agents-check
 device-helpers-check:
 	@$(MAKE) -n device-info-j8 | grep -F '$$serial' >/dev/null
 	@$(MAKE) -n device-info-g41 | grep -F '$$serial' >/dev/null
-	@test "$(printf 'List of devices attached\r\nABC123             device product:corfu_g model:moto_g41 device:corfu transport_id:26\r\n' | tr -d '\r' | grep -F 'model:moto_g41' | head -n 1 | sed 's/[[:space:]].*$$//')" = "ABC123"
+	@printf 'List of devices attached\r\nABC123             device product:corfu_g model:moto_g41 device:corfu transport_id:26\r\n' | tr -d '\r' | grep -F 'model:moto_g41' | head -n 1 | sed 's/[[:space:]].*$//' | grep -Fx 'ABC123' >/dev/null
 	@printf '%s\n' 'validated device helper escaping and Windows adb -l parsing'
 
 clean:
