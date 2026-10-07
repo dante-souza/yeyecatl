@@ -31,6 +31,7 @@ import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumCompleteness
 fun WifiSpectrumChart(
     observations: List<WifiScanObservation>,
     band: WifiBand,
+    selectedBssid: String? = null,
     modifier: Modifier = Modifier
 ) {
     val viewport = remember(band) { WifiSpectrumViewports.forBand(band) }
@@ -111,8 +112,21 @@ fun WifiSpectrumChart(
         drawLine(axisColor, Offset(plotLeft, plotBottom), Offset(plotRight, plotBottom))
         drawLine(axisColor, Offset(plotLeft, plotTop), Offset(plotLeft, plotBottom))
 
-        visualObservations.forEach { observation ->
-            val color = palette[colorIndex(observation.colorKey, palette.size)]
+        val orderedObservations = visualObservations.sortedBy {
+            it.bssid == selectedBssid
+        }
+
+        orderedObservations.forEach { observation ->
+            val baseColor = palette[colorIndex(observation.colorKey, palette.size)]
+            val isSelected = selectedBssid != null && observation.bssid == selectedBssid
+            val isDimmed = selectedBssid != null && !isSelected
+            val color = if (isDimmed) baseColor.copy(alpha = 0.35f) else baseColor
+            val strokeWidth = if (isSelected) 4.dp.toPx() else 2.dp.toPx()
+            val fillAlpha = when {
+                isSelected -> 0.34f
+                isDimmed -> 0.08f
+                else -> 0.22f
+            }
             val topY = plotTop + WifiSpectrumProjection.rssiToY(
                 observation.rssiDbm,
                 viewport,
@@ -142,13 +156,19 @@ fun WifiSpectrumChart(
                             lineTo(rightX, plotBottom)
                             close()
                         }
-                        drawPath(envelope, color.copy(alpha = 0.22f))
-                        drawPath(envelope, color, style = Stroke(width = 2.dp.toPx()))
+                        drawPath(envelope, baseColor.copy(alpha = fillAlpha))
+                        drawPath(envelope, color, style = Stroke(width = strokeWidth))
                         drawText(
                             textMeasurer = textMeasurer,
                             text = observation.label,
                             topLeft = Offset(centerX - 24.dp.toPx(), topY - 18.dp.toPx()),
-                            style = smallLabelStyle
+                            style = smallLabelStyle.copy(
+                                color = if (isDimmed) {
+                                    textColor.copy(alpha = 0.45f)
+                                } else {
+                                    textColor
+                                }
+                            )
                         )
                     }
                     WifiSpectrumCompleteness.Partial -> {
@@ -156,14 +176,20 @@ fun WifiSpectrumChart(
                             color = color,
                             start = Offset(centerX, topY),
                             end = Offset(centerX, plotBottom),
-                            strokeWidth = 2.dp.toPx(),
+                            strokeWidth = strokeWidth,
                             pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f))
                         )
                         drawText(
                             textMeasurer = textMeasurer,
                             text = observation.label,
                             topLeft = Offset(centerX + 4.dp.toPx(), topY),
-                            style = smallLabelStyle
+                            style = smallLabelStyle.copy(
+                                color = if (isDimmed) {
+                                    textColor.copy(alpha = 0.45f)
+                                } else {
+                                    textColor
+                                }
+                            )
                         )
                     }
                     WifiSpectrumCompleteness.Unavailable,
