@@ -42,7 +42,8 @@ The projection provides:
 
 - chronological RSSI points;
 - a display limit of the newest 60 retained samples;
-- a fixed observational RSSI viewport shared with the existing history chart;
+- an adaptive focused RSSI viewport rounded outward to 10 dB grid lines;
+- a minimum focused RSSI span of 20 dB so nearly-flat histories remain readable;
 - retained sample count;
 - latest retained RSSI;
 - strongest retained RSSI;
@@ -63,6 +64,8 @@ When a selectable BSSID is selected in **Nearby networks**, its existing Phase 2
 The global **Signal history** chart remains unchanged and continues to follow the selected spectrum band plus All / Strongest 5 / Weakest 5 scope.
 
 The focused chart does not inherit those global filters because its scope is the exact selected BSSID.
+
+Its vertical scale is also intentionally independent from the global multi-BSSID chart. The global chart keeps a common comparison scale, while the focused chart adapts to the retained RSSI range for the selected BSSID so strong signals above -30 dBm are not visually clamped.
 
 ## Truthfulness constraints
 
