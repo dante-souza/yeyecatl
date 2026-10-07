@@ -279,7 +279,7 @@ class YeyecatlAppTest {
         onNodeWithText("Observed networks").assertIsDisplayed()
         onNodeWithText("Freshness").assertIsDisplayed()
         onNodeWithText("BSSID  00:00:00:00:00:01").assertIsDisplayed()
-        onNodeWithText("2.4 GHz • Ch 1 • 2412 MHz • 20 MHz • Standard ?").assertIsDisplayed()
+        onNodeWithText("2.4 GHz • Ch 1 • 20 MHz").assertIsDisplayed()
         onNodeWithText("Capabilities  [ESS]").assertIsDisplayed()
     }
 

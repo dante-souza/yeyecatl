@@ -30,8 +30,8 @@ fun WifiObservationListItem(
         tonalElevation = 1.dp
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -68,10 +68,6 @@ fun WifiObservationListItem(
 
             Text(
                 text = presentation.radioSummary,
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Text(
-                text = presentation.geometrySummary,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

@@ -131,9 +131,8 @@ Each network card shows:
 - SSID as the primary title;
 - RSSI as the immediately visible signal measurement;
 - BSSID as a secondary monospace identity;
-- band, primary channel, frequency, channel width and observed Wi-Fi standard in
-  one compact RF summary;
-- center-frequency and spectrum-footprint geometry on a secondary line;
+- band, primary channel and channel width in one compact RF summary;
+- observed Wi-Fi standard only when Android reports a known value;
 - the raw Android capability string without reinterpreting it as a friendlier
   security label.
 
@@ -141,9 +140,17 @@ Hidden SSIDs are shown as `Hidden network`. A missing non-hidden display name is
 shown as `SSID unavailable`. Missing RF values remain explicit rather than being
 inferred.
 
+Primary frequency, center frequency, RF span and geometry completeness are
+deliberately omitted from the nearby-network summary because band + channel already
+identify the operating frequency context and channel width is the useful MHz value
+for this view. Those RF details remain available in the underlying observation
+model for later network-detail presentation.
+
+Unknown Wi-Fi standard is also omitted instead of rendering a placeholder.
+
 The presentation mapper is pure Kotlin and uses the existing
-`WifiRfInterpreter` and `WifiSpectrumGeometry` boundaries. The Compose card only
-renders the already-derived presentation model.
+`WifiRfInterpreter` boundary. The Compose card only renders the already-derived
+presentation model.
 
 This is a presentation-only refinement. It does not change filtering, sorting,
 signal ranking, temporal history, observation identity, RF interpretation or the

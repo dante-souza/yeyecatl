@@ -4,8 +4,6 @@ import io.github.dante_souza.yeyecatl.domain.wifi.WifiBand
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiRfInterpreter
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanObservation
-import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumCompleteness
-import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumGeometry
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard
 
 data class WifiObservationPresentation(
@@ -13,14 +11,12 @@ data class WifiObservationPresentation(
     val bssidText: String,
     val rssiText: String,
     val radioSummary: String,
-    val geometrySummary: String,
     val capabilitiesSummary: String
 )
 
 object WifiObservationPresenter {
     fun present(observation: WifiScanObservation): WifiObservationPresentation {
         val rf = WifiRfInterpreter.interpret(observation)
-        val footprint = WifiSpectrumGeometry.footprint(rf)
 
         return WifiObservationPresentation(
             ssidText = observation.ssid.displayText ?: if (observation.ssid.isHidden) {
@@ -30,43 +26,17 @@ object WifiObservationPresenter {
             },
             bssidText = observation.bssid ?: "Unavailable",
             rssiText = observation.rssiDbm?.let { "$it dBm" } ?: "RSSI ?",
-            radioSummary = listOf(
-                rf.band.displayLabel(),
-                rf.primaryChannel?.let { "Ch $it" } ?: "Ch ?",
-                rf.primaryFrequencyMhz?.let { "$it MHz" } ?: "Frequency ?",
-                rf.channelWidth.displayLabel(),
-                rf.wifiStandard.displayLabel()
-            ).joinToString(separator = " • "),
-            geometrySummary = listOf(
-                centerSummary(rf.centerFrequency0Mhz, rf.centerFrequency1Mhz),
-                footprint.segments
-                    .takeIf { it.isNotEmpty() }
-                    ?.joinToString(
-                        prefix = "RF ",
-                        separator = " / "
-                    ) { segment ->
-                        "${segment.lowerFrequencyMhz}–${segment.upperFrequencyMhz} MHz"
-                    }
-                    ?: "RF unavailable",
-                "Geometry ${footprint.completeness.displayLabel()}"
-            ).joinToString(separator = " • "),
+            radioSummary = buildList {
+                add(rf.band.displayLabel())
+                add(rf.primaryChannel?.let { "Ch $it" } ?: "Ch ?")
+                add(rf.channelWidth.displayLabel())
+                rf.wifiStandard.displayLabelOrNull()?.let(::add)
+            }.joinToString(separator = " • "),
             capabilitiesSummary = observation.capabilities
                 ?.let { "Capabilities  $it" }
                 ?: "Capabilities  not reported"
         )
     }
-
-    private fun centerSummary(center0Mhz: Int?, center1Mhz: Int?): String =
-        when {
-            center0Mhz != null && center1Mhz != null ->
-                "Centers $center0Mhz / $center1Mhz MHz"
-            center0Mhz != null ->
-                "Center $center0Mhz MHz"
-            center1Mhz != null ->
-                "Center $center1Mhz MHz"
-            else ->
-                "Center —"
-        }
 
     private fun WifiBand.displayLabel(): String =
         when (this) {
@@ -88,7 +58,7 @@ object WifiObservationPresenter {
             WifiChannelWidth.Unknown -> "Width ?"
         }
 
-    private fun WifiStandard.displayLabel(): String =
+    private fun WifiStandard.displayLabelOrNull(): String? =
         when (this) {
             WifiStandard.Legacy -> "Legacy"
             WifiStandard.Ieee80211n -> "802.11n"
@@ -96,14 +66,6 @@ object WifiObservationPresenter {
             WifiStandard.Ieee80211ax -> "802.11ax"
             WifiStandard.Ieee80211ad -> "802.11ad"
             WifiStandard.Ieee80211be -> "802.11be"
-            WifiStandard.Unknown -> "Standard ?"
-        }
-
-    private fun WifiSpectrumCompleteness.displayLabel(): String =
-        when (this) {
-            WifiSpectrumCompleteness.Complete -> "complete"
-            WifiSpectrumCompleteness.Partial -> "partial"
-            WifiSpectrumCompleteness.Unavailable -> "unavailable"
-            WifiSpectrumCompleteness.Inconsistent -> "inconsistent"
+            WifiStandard.Unknown -> null
         }
 }
