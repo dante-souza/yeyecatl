@@ -105,4 +105,8 @@ from physical testing is:
 build: add explicit J8 and G41 device helpers
 ```
 
-CI should be recorded here only after the final feature-head run is green.
+Final feature-head GitHub Actions validation:
+
+```text
+37679929306 — PASS
+```
