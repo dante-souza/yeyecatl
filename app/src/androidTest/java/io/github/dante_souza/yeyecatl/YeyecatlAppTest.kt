@@ -1,6 +1,7 @@
 package io.github.dante_souza.yeyecatl
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -57,6 +58,34 @@ class YeyecatlAppTest {
         onNodeWithText("Next scan in", substring = true).assertIsDisplayed()
         onNodeWithText("The counter records requests issued", substring = true)
             .assertIsDisplayed()
+    }
+
+    @Test
+    fun pollingIntervalSelectorUpdatesLiveDynamicCadence() = runComposeUiTest {
+        setContent {
+            var intervalMillis by remember { mutableLongStateOf(5_000L) }
+            YeyecatlApp(
+                dynamicScanEnabled = true,
+                dynamicScanRequestCount = 2,
+                dynamicScanIntervalMillis = intervalMillis,
+                onDynamicScanIntervalSelected = { intervalMillis = it }
+            )
+        }
+
+        onNodeWithText("Polling interval").assertIsDisplayed()
+        onNodeWithText("1 s").assertIsDisplayed()
+        onNodeWithText("2 s").assertIsDisplayed()
+        onNodeWithText("5 s").assertIsDisplayed()
+        onNodeWithText("10 s").assertIsDisplayed()
+        onNodeWithText("30 s").assertIsDisplayed()
+        onNodeWithText("5s polling", substring = true).assertIsDisplayed()
+
+        onNodeWithText("1 s").performClick()
+        onNodeWithText("1s polling", substring = true).assertIsDisplayed()
+
+        onNodeWithText("30 s").performClick()
+        onNodeWithText("30s polling", substring = true).assertIsDisplayed()
+        onNodeWithText("Scans: 2").assertIsDisplayed()
     }
 
     @Test
