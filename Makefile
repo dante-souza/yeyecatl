@@ -114,9 +114,10 @@ lint:
 check: build unit-test android-test-build lint device-helpers-check agents-check
 
 device-helpers-check:
-	@$(MAKE) -n device-info-j8 | grep -F '$$serial' >/dev/null
-	@$(MAKE) -n device-info-g41 | grep -F '$$serial' >/dev/null
-	@printf '%s\n' 'validated device helper shell-variable escaping'
+	@$(MAKE) -n device-info-j8 | grep -F '$serial' >/dev/null
+	@$(MAKE) -n device-info-g41 | grep -F '$serial' >/dev/null
+	@test "$(printf 'List of devices attached\r\n0077860711\tdevice product:corfu_g model:moto_g41\r\n' | tr -d '\r' | awk 'NR > 1 && $2 == "device" { print $1 }')" = "0077860711"
+	@printf '%s\n' 'validated device helper shell-variable escaping and Windows CRLF parsing'
 
 clean:
 	@$(GRADLE) clean
@@ -127,7 +128,7 @@ install-debug:
 install-debug-j8: assemble-debug
 	@serial="$(J8_SERIAL)"; \
 	if [ -z "$$serial" ]; then \
-	  for candidate in $$($(ADB) devices | awk 'NR > 1 && $$2 == "device" { print $$1 }'); do \
+	  for candidate in $($(ADB) devices | tr -d '\r' | awk 'NR > 1 && $2 == "device" { print $1 }'); do \
 	    model="$$($(ADB) -s "$$candidate" shell getprop ro.product.model | tr -d '\r')"; \
 	    if [ "$$model" = "$(J8_MODEL)" ]; then serial="$$candidate"; break; fi; \
 	  done; \
@@ -138,7 +139,7 @@ install-debug-j8: assemble-debug
 install-debug-g41: assemble-debug
 	@serial="$(G41_SERIAL)"; \
 	if [ -z "$$serial" ]; then \
-	  for candidate in $$($(ADB) devices | awk 'NR > 1 && $$2 == "device" { print $$1 }'); do \
+	  for candidate in $($(ADB) devices | tr -d '\r' | awk 'NR > 1 && $2 == "device" { print $1 }'); do \
 	    model="$$($(ADB) -s "$$candidate" shell getprop ro.product.model | tr -d '\r')"; \
 	    if [ "$$model" = "$(G41_MODEL)" ]; then serial="$$candidate"; break; fi; \
 	  done; \
@@ -152,7 +153,7 @@ open-app:
 open-app-j8:
 	@serial="$(J8_SERIAL)"; \
 	if [ -z "$$serial" ]; then \
-	  for candidate in $$($(ADB) devices | awk 'NR > 1 && $$2 == "device" { print $$1 }'); do \
+	  for candidate in $($(ADB) devices | tr -d '\r' | awk 'NR > 1 && $2 == "device" { print $1 }'); do \
 	    model="$$($(ADB) -s "$$candidate" shell getprop ro.product.model | tr -d '\r')"; \
 	    if [ "$$model" = "$(J8_MODEL)" ]; then serial="$$candidate"; break; fi; \
 	  done; \
@@ -164,7 +165,7 @@ open-app-j8:
 open-app-g41:
 	@serial="$(G41_SERIAL)"; \
 	if [ -z "$$serial" ]; then \
-	  for candidate in $$($(ADB) devices | awk 'NR > 1 && $$2 == "device" { print $$1 }'); do \
+	  for candidate in $($(ADB) devices | tr -d '\r' | awk 'NR > 1 && $2 == "device" { print $1 }'); do \
 	    model="$$($(ADB) -s "$$candidate" shell getprop ro.product.model | tr -d '\r')"; \
 	    if [ "$$model" = "$(G41_MODEL)" ]; then serial="$$candidate"; break; fi; \
 	  done; \
@@ -190,7 +191,7 @@ device-info:
 device-info-j8:
 	@serial="$(J8_SERIAL)"; \
 	if [ -z "$$serial" ]; then \
-	  for candidate in $$($(ADB) devices | awk 'NR > 1 && $$2 == "device" { print $$1 }'); do \
+	  for candidate in $($(ADB) devices | tr -d '\r' | awk 'NR > 1 && $2 == "device" { print $1 }'); do \
 	    model="$$($(ADB) -s "$$candidate" shell getprop ro.product.model | tr -d '\r')"; \
 	    if [ "$$model" = "$(J8_MODEL)" ]; then serial="$$candidate"; break; fi; \
 	  done; \
@@ -209,7 +210,7 @@ device-info-j8:
 device-info-g41:
 	@serial="$(G41_SERIAL)"; \
 	if [ -z "$$serial" ]; then \
-	  for candidate in $$($(ADB) devices | awk 'NR > 1 && $$2 == "device" { print $$1 }'); do \
+	  for candidate in $($(ADB) devices | tr -d '\r' | awk 'NR > 1 && $2 == "device" { print $1 }'); do \
 	    model="$$($(ADB) -s "$$candidate" shell getprop ro.product.model | tr -d '\r')"; \
 	    if [ "$$model" = "$(G41_MODEL)" ]; then serial="$$candidate"; break; fi; \
 	  done; \
