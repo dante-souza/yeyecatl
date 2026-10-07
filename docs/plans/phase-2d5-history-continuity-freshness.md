@@ -45,3 +45,28 @@ Validated on the Galaxy J8:
 - All mode remains visually dense and is the next readability target.
 
 This checkpoint is the rollback baseline before cadence-aware stale-hold behavior and All-mode history hierarchy are introduced.
+
+
+## D5.1 — Cadence-aware freshness + dense All hierarchy
+Implemented in source; awaiting J8 validation.
+
+Freshness window:
+- 5 s Lab -> 15 s hold;
+- 10 s Lab -> 20 s hold;
+- 30 s Default -> 45 s hold;
+- 45 s -> 67.5 s hold;
+- 60 s -> 90 s hold;
+- 120 s -> 90 s cap.
+
+The same freshness window controls both the dashed last-known tail and the maximum
+gap that may remain a solid measured segment. Once the window expires, later
+samples do not retroactively bridge the stale period.
+
+Dense All-mode rendering:
+- all BSSID histories remain represented;
+- the 8 strongest recent BSSIDs are foreground traces;
+- background traces are thin, low-alpha and omit point markers;
+- selected BSSID always renders last and at full emphasis;
+- Strongest 5 and Weakest 5 remain fully detailed and labeled.
+
+No retained RF samples are synthesized by either policy.
