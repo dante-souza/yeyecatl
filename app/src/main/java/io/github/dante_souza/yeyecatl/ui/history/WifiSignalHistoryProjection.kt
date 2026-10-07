@@ -26,6 +26,8 @@ data class WifiSignalHistoryViewport(
 
 object WifiSignalHistoryProjection {
     const val DEFAULT_MAX_POINTS_PER_SERIES: Int = 30
+    const val DEFAULT_ROLLING_WINDOW_MILLIS = 120_000L
+    const val MIN_LINE_GAP_THRESHOLD_MILLIS = 15_000L
     private const val SINGLE_POINT_WINDOW_MILLIS = 30_000L
 
     fun series(
@@ -90,6 +92,52 @@ object WifiSignalHistoryProjection {
             minTimeMillis = minTime,
             maxTimeMillis = observedMax
         )
+    }
+
+    fun rollingViewport(
+        nowMillis: Long,
+        windowMillis: Long = DEFAULT_ROLLING_WINDOW_MILLIS
+    ): WifiSignalHistoryViewport {
+        require(windowMillis > 0L) { "windowMillis must be greater than zero" }
+        return WifiSignalHistoryViewport(
+            minTimeMillis = nowMillis - windowMillis,
+            maxTimeMillis = nowMillis
+        )
+    }
+
+    fun visiblePoints(
+        points: List<WifiSignalHistoryPoint>,
+        viewport: WifiSignalHistoryViewport
+    ): List<WifiSignalHistoryPoint> =
+        points.filter {
+            it.observedAtMillis in viewport.minTimeMillis..viewport.maxTimeMillis
+        }
+
+    fun contiguousSegments(
+        points: List<WifiSignalHistoryPoint>,
+        maxGapMillis: Long
+    ): List<List<WifiSignalHistoryPoint>> {
+        require(maxGapMillis > 0L) { "maxGapMillis must be greater than zero" }
+        if (points.isEmpty()) {
+            return emptyList()
+        }
+
+        val sorted = points.sortedBy { it.observedAtMillis }
+        val segments = mutableListOf<MutableList<WifiSignalHistoryPoint>>()
+        var current = mutableListOf(sorted.first())
+        segments += current
+
+        sorted.drop(1).forEach { point ->
+            val previous = current.last()
+            if (point.observedAtMillis - previous.observedAtMillis > maxGapMillis) {
+                current = mutableListOf(point)
+                segments += current
+            } else {
+                current += point
+            }
+        }
+
+        return segments
     }
 
     fun timeToX(
