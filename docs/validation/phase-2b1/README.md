@@ -68,7 +68,7 @@ commits and branch topology are preserved.
 
 ## Original screenshot evidence
 
-The original device screenshot must be committed byte-for-byte under:
+The original device screenshot is committed byte-for-byte under:
 
 ```text
 yeyecatl-phase-2b1-j8-nearby-networks-expandable-card.png
@@ -85,21 +85,29 @@ commit.
 | SHA-256 | `b1509e9436f7e663acb70d9203c63f5924b5d63c63c149e82322b97069a8169f` |
 
 This metadata was calculated from the original screenshot supplied during the
-physical-device acceptance session.
+physical-device acceptance session. The repository blob was verified against the
+preserved original and matches exactly.
+
+Git blob SHA-1:
+
+```text
+2b811d4bfd2d148281593ce76cbc38bc024029a9
+```
 
 ## Evidence branch status
 
-The metadata and checksum manifest are staged on
+The metadata, checksum manifest and original PNG are all present on
 `docs/phase-2b1-j8-evidence`.
 
-The evidence PR must remain draft until the original PNG above is added and its
-SHA-256 is re-verified from the repository working tree.
+The PNG was re-verified from the repository working tree with the exact SHA-256
+recorded above. The repository Git blob also matches the preserved original
+byte-for-byte.
 
 ## Status
 
 **DEVICE ACCEPTANCE: PASS**
 
-**ARCHAEOLOGY IMAGE ARCHIVE: PENDING ORIGINAL PNG COMMIT**
+**ARCHAEOLOGY IMAGE ARCHIVE: COMPLETE**
 
-Once the original PNG is present with the exact hash above, this record can be
-merged into `dev` and the evidence branch frozen.
+This record is complete and can be merged into `dev` with a normal merge commit.
+After integration, the evidence branch remains frozen as an archaeological ref.
