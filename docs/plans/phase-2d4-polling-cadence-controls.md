@@ -85,6 +85,19 @@ Required behavior:
 - enable behavior remains: first dynamic request is immediate;
 - foreground leave/re-enter behavior remains intact.
 
+## Physical-test finding — splash visibility and rejection presentation
+
+Moto G41 testing on fast startup made the branded system splash effectively
+imperceptible. Keep the Yeyecatl splash visible for a short minimum window so
+the app identity remains visible without turning startup into a fake loading
+screen.
+
+Rapid polling also made Android request rejection copy appear as a prominent
+main-screen error even though throttling is expected at short intervals. During
+Dynamic Scan, expected request rejection is contained inside the stable Dynamic
+Scan status card while Observation continues to expose the last usable results.
+Unexpected scanner errors remain visible as errors.
+
 ## Physical-test finding — stable scan card geometry
 
 Moto G41 testing also exposed visible vertical jitter while the Dynamic Scan card
