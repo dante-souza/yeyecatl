@@ -118,7 +118,7 @@ check: build unit-test android-test-build lint device-helpers-check agents-check
 device-helpers-check:
 	@$(MAKE) -n device-info-j8 | grep -F '$$serial' >/dev/null
 	@$(MAKE) -n device-info-g41 | grep -F '$$serial' >/dev/null
-	@test "$$(printf 'List of devices attached\r\nABC123\tdevice product:corfu_g model:moto_g41 device:corfu\r\n' | tr -d '\r' | grep -F 'model:moto_g41' | head -n 1 | cut -f 1)" = "ABC123"
+	@test "$(printf 'List of devices attached\r\nABC123             device product:corfu_g model:moto_g41 device:corfu transport_id:26\r\n' | tr -d '\r' | grep -F 'model:moto_g41' | head -n 1 | sed 's/[[:space:]].*$//')" = "ABC123"
 	@printf '%s\n' 'validated device helper escaping and Windows adb -l parsing'
 
 clean:
@@ -130,7 +130,7 @@ install-debug:
 install-debug-j8: assemble-debug
 	@serial="$(J8_SERIAL)"; \
 	if [ -z "$$serial" ]; then \
-	  serial="$$( $(ADB) devices -l | tr -d '\r' | grep -F 'model:$(J8_ADB_MODEL)' | head -n 1 | cut -f 1 )"; \
+	  serial="$$( $(ADB) devices -l | tr -d '\r' | grep -F 'model:$(J8_ADB_MODEL)' | head -n 1 | sed 's/[[:space:]].*$//' )"; \
 	fi; \
 	if [ -z "$$serial" ]; then printf '%s\n' 'ERROR: Galaxy J8 not found. Set J8_SERIAL=... to override.'; exit 1; fi; \
 	$(ADB) -s "$$serial" install --no-streaming -r $(DEBUG_APK)
@@ -138,7 +138,7 @@ install-debug-j8: assemble-debug
 install-debug-g41: assemble-debug
 	@serial="$(G41_SERIAL)"; \
 	if [ -z "$$serial" ]; then \
-	  serial="$$( $(ADB) devices -l | tr -d '\r' | grep -F 'model:$(G41_ADB_MODEL)' | head -n 1 | cut -f 1 )"; \
+	  serial="$$( $(ADB) devices -l | tr -d '\r' | grep -F 'model:$(G41_ADB_MODEL)' | head -n 1 | sed 's/[[:space:]].*$//' )"; \
 	fi; \
 	if [ -z "$$serial" ]; then printf '%s\n' 'ERROR: Moto G41 not found. Set G41_SERIAL=... to override.'; exit 1; fi; \
 	$(ADB) -s "$$serial" install --no-streaming -r $(DEBUG_APK)
@@ -149,7 +149,7 @@ open-app:
 open-app-j8:
 	@serial="$(J8_SERIAL)"; \
 	if [ -z "$$serial" ]; then \
-	  serial="$$( $(ADB) devices -l | tr -d '\r' | grep -F 'model:$(J8_ADB_MODEL)' | head -n 1 | cut -f 1 )"; \
+	  serial="$$( $(ADB) devices -l | tr -d '\r' | grep -F 'model:$(J8_ADB_MODEL)' | head -n 1 | sed 's/[[:space:]].*$//' )"; \
 	fi; \
 	if [ -z "$$serial" ]; then printf '%s\n' 'ERROR: Galaxy J8 not found. Set J8_SERIAL=... to override.'; exit 1; fi; \
 	$(ADB) -s "$$serial" shell am force-stop $(APP_ID); \
@@ -158,7 +158,7 @@ open-app-j8:
 open-app-g41:
 	@serial="$(G41_SERIAL)"; \
 	if [ -z "$$serial" ]; then \
-	  serial="$$( $(ADB) devices -l | tr -d '\r' | grep -F 'model:$(G41_ADB_MODEL)' | head -n 1 | cut -f 1 )"; \
+	  serial="$$( $(ADB) devices -l | tr -d '\r' | grep -F 'model:$(G41_ADB_MODEL)' | head -n 1 | sed 's/[[:space:]].*$//' )"; \
 	fi; \
 	if [ -z "$$serial" ]; then printf '%s\n' 'ERROR: Moto G41 not found. Set G41_SERIAL=... to override.'; exit 1; fi; \
 	$(ADB) -s "$$serial" shell am force-stop $(APP_ID); \
@@ -181,7 +181,7 @@ device-info:
 device-info-j8:
 	@serial="$(J8_SERIAL)"; \
 	if [ -z "$$serial" ]; then \
-	  serial="$$( $(ADB) devices -l | tr -d '\r' | grep -F 'model:$(J8_ADB_MODEL)' | head -n 1 | cut -f 1 )"; \
+	  serial="$$( $(ADB) devices -l | tr -d '\r' | grep -F 'model:$(J8_ADB_MODEL)' | head -n 1 | sed 's/[[:space:]].*$//' )"; \
 	fi; \
 	if [ -z "$$serial" ]; then printf '%s\n' 'ERROR: Galaxy J8 not found. Set J8_SERIAL=... to override.'; exit 1; fi; \
 	printf 'device=Galaxy J8\nmodel=%s\n' "$(J8_MODEL)"; \
@@ -197,7 +197,7 @@ device-info-j8:
 device-info-g41:
 	@serial="$(G41_SERIAL)"; \
 	if [ -z "$$serial" ]; then \
-	  serial="$$( $(ADB) devices -l | tr -d '\r' | grep -F 'model:$(G41_ADB_MODEL)' | head -n 1 | cut -f 1 )"; \
+	  serial="$$( $(ADB) devices -l | tr -d '\r' | grep -F 'model:$(G41_ADB_MODEL)' | head -n 1 | sed 's/[[:space:]].*$//' )"; \
 	fi; \
 	if [ -z "$$serial" ]; then printf '%s\n' 'ERROR: Moto G41 not found. Set G41_SERIAL=... to override.'; exit 1; fi; \
 	printf 'device=Moto G41\nmodel=%s\n' "$(G41_MODEL)"; \
