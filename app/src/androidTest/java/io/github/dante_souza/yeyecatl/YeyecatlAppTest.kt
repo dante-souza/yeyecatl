@@ -333,6 +333,78 @@ class YeyecatlAppTest {
     }
 
     @Test
+    fun focusedSelectionStaysOpenAcrossTransientScanMissAndRecovers() = runComposeUiTest {
+        val selectedBssid = "00:00:00:00:00:01"
+        val selected = observation(
+            ssid = "sticky",
+            bssid = selectedBssid,
+            rssiDbm = -42,
+            frequencyMhz = 2412
+        )
+        val other = observation(
+            ssid = "other",
+            bssid = "00:00:00:00:00:02",
+            rssiDbm = -65,
+            frequencyMhz = 2437
+        )
+        val history = WifiTemporalObservationHistory(
+            samplesByBssid = mapOf(
+                selectedBssid to listOf(
+                    WifiSignalSample(
+                        bssid = selectedBssid,
+                        ssid = selected.ssid,
+                        rssiDbm = -42,
+                        frequencyMhz = 2412,
+                        observedAtMillis = 5_000L
+                    )
+                )
+            )
+        )
+        var state by mutableStateOf(
+            resultsState(
+                observations = listOf(selected, other),
+                receivedAtMillis = 5_000L
+            )
+        )
+
+        setContent {
+            YeyecatlApp(
+                scanState = state,
+                temporalHistory = history
+            )
+        }
+
+        onNodeWithContentDescription("Select access point $selectedBssid").performClick()
+        waitForIdle()
+        onNodeWithText("Selected access point").assertIsDisplayed()
+        onNodeWithText("Not seen in latest scan", substring = true).assertIsNotDisplayed()
+
+        state = resultsState(
+            observations = listOf(other),
+            receivedAtMillis = 35_000L
+        )
+        waitForIdle()
+
+        onNodeWithText("Focused selection").assertIsDisplayed()
+        onNodeWithText(
+            "Not seen in latest scan · showing last known observation"
+        ).assertIsDisplayed()
+        onNodeWithText("Last observed RSSI").assertIsDisplayed()
+        onNodeWithText("30s ago").assertIsDisplayed()
+        onNodeWithText("Clear selection").assertIsDisplayed()
+
+        state = resultsState(
+            observations = listOf(selected.copy(rssiDbm = -39), other),
+            receivedAtMillis = 65_000L
+        )
+        waitForIdle()
+
+        onNodeWithText("Not seen in latest scan", substring = true).assertIsNotDisplayed()
+        onNodeWithText("-39 dBm").assertIsDisplayed()
+        onNodeWithText("RSSI").assertIsDisplayed()
+    }
+
+    @Test
     fun diagnosticListRemainsAvailableWithSyntheticObservation() = runComposeUiTest {
         setContent {
             YeyecatlApp(scanState = resultsState(listOf(observation())))
@@ -347,14 +419,17 @@ class YeyecatlAppTest {
         onNodeWithText("Less").assertIsDisplayed()
     }
 
-    private fun resultsState(observations: List<WifiScanObservation>): WifiScanState =
+    private fun resultsState(
+        observations: List<WifiScanObservation>,
+        receivedAtMillis: Long = 0L
+    ): WifiScanState =
         WifiScanState.Results(
             WifiScanSnapshot(
                 observations = observations,
                 freshness = WifiScanFreshness.Fresh,
                 source = WifiScanResultSource.ApplicationRequest,
                 resultsUpdated = true,
-                receivedAtMillis = 0L
+                receivedAtMillis = receivedAtMillis
             )
         )
 
