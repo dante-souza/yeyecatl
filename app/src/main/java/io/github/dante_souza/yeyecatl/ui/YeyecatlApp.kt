@@ -363,7 +363,11 @@ private fun PollingIntervalSelector(
             }
         }
         Text(
-            text = "Best effort: Android may throttle rapid Wi-Fi scan requests.",
+            text = if (WifiPollingIntervalPolicy.isExperimental(selectedIntervalMillis)) {
+                "Experimental polling: Android may throttle rapid scans. Use only for lab testing."
+            } else {
+                "Standard polling: 30 s recommended. Fresh observations may still arrive less frequently."
+            },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -1001,7 +1005,14 @@ private fun YeyecatlPlaceholderPreview() {
 }
 
 private fun pollingIntervalLabel(intervalMillis: Long): String =
-    "${intervalMillis / 1_000L} s"
+    "${intervalMillis / 1_000L} s" +
+        if (intervalMillis == WifiPollingIntervalPolicy.DEFAULT_INTERVAL_MILLIS) {
+            " · Default"
+        } else if (WifiPollingIntervalPolicy.isExperimental(intervalMillis)) {
+            " · Lab"
+        } else {
+            ""
+        }
 
 private const val DYNAMIC_PROGRESS_TICK_MILLIS = 250L
 private const val ALL_BANDS_KEY = "all"
