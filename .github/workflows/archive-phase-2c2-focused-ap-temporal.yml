@@ -1,0 +1,98 @@
+name: Archive Phase 2C.2 focused AP temporal detail
+
+on:
+  push:
+    branches:
+      - docs/phase-2c2-j8-evidence
+    paths:
+      - "docs/validation/phase-2c2/*.jpg"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  archive:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      FREEZE_SHA: e72b5b0d3f6a91fee057e46bce9ff9b6152e339b
+      INTEGRATION_SHA: e808e8cedb10b1afac18fba7f5e2a85c60c66503
+      RELEASE_TAG: v0.1.0-phase2c2-focused-ap-temporal.1
+      APK_NAME: yeyecatl-v0.1.0-phase2c2-focused-ap-temporal.1-debug.apk
+      EVIDENCE_DIR: evidence/docs/validation/phase-2c2
+
+    steps:
+      - name: Check out archaeological evidence
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: docs/phase-2c2-j8-evidence
+          path: evidence
+
+      - name: Check out frozen implementation
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ env.FREEZE_SHA }}
+          path: source
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6.0.1
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Verify original J8 evidence
+        shell: bash
+        run: |
+          cd "$EVIDENCE_DIR"
+          sha256sum -c SHA256SUMS-images.txt
+
+      - name: Run frozen repository checks
+        shell: bash
+        run: |
+          cd source
+          make setup
+          make check
+
+      - name: Prepare release assets
+        shell: bash
+        run: |
+          mkdir -p release
+          cp source/app/build/outputs/apk/debug/app-debug.apk "release/$APK_NAME"
+          cp "$EVIDENCE_DIR"/*.jpg release/
+          cp "$EVIDENCE_DIR/README.md" release/phase-2c2-validation-record.md
+          (
+            cd release
+            sha256sum "$APK_NAME" *.jpg phase-2c2-validation-record.md > SHA256SUMS.txt
+          )
+          cat > release/RELEASE_NOTES.md <<'EOF'
+          # Yeyecatl — Phase 2C.2 Focused AP Temporal Detail Freeze
+
+          Archaeological prerelease preserving the physically accepted Phase 2C.2 exact-BSSID temporal inspection milestone.
+
+          - Source freeze: `e72b5b0d3f6a91fee057e46bce9ff9b6152e339b`
+          - Integration commit: `e808e8cedb10b1afac18fba7f5e2a85c60c66503`
+          - Validation: **PASS**
+          - Device: Samsung Galaxy J8 / SM-J810M / Android 10
+          - Feature CI: **37641913450 — PASS**
+
+          Preserved behavior includes adaptive exact-BSSID RSSI history, retained signal summary,
+          sticky focus across transient scan misses, stable focused-inspector placement, user-triggered
+          auto-navigation to focus, and the `make open-app` helper.
+
+          This is an archaeological prerelease and preservation point.
+          EOF
+
+      - name: Publish archaeological prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          assets=(release/"$APK_NAME" release/*.jpg release/phase-2c2-validation-record.md release/SHA256SUMS.txt)
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --target "$FREEZE_SHA" --title "Phase 2C.2 Focused AP Temporal Detail Freeze — Galaxy J8" --notes-file release/RELEASE_NOTES.md --prerelease
+            gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" "${assets[@]}" --clobber
+          else
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --target "$FREEZE_SHA" --title "Phase 2C.2 Focused AP Temporal Detail Freeze — Galaxy J8" --notes-file release/RELEASE_NOTES.md --prerelease "${assets[@]}"
+          fi
