@@ -26,3 +26,10 @@ the only source of points and lines in the retained history.
 ## Evidence
 Capture screenshots at fresh, held and expired states, plus commands/build logs.
 Do not freeze or release until physical validation and acceptance.
+
+## Integrated Phase 2D polling policy
+- Standard/default request cadence: 30 seconds.
+- Lab cadences: 5 and 10 seconds, explicitly labeled experimental.
+- Additional standard choices: 45, 60 and 120 seconds.
+- Legacy 1 and 2 second persisted choices sanitize to the 30-second default.
+- Polling remains a request cadence; it never guarantees a fresh Android scan result.
