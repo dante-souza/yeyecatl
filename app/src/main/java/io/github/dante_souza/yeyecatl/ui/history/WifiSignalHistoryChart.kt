@@ -80,8 +80,16 @@ fun WifiSignalHistoryChart(
                 .height(280.dp)
                 .padding(top = 12.dp)
                 .semantics {
-                    contentDescription = "${band.label()} signal history chart with " +
-                        "${series.size} BSSID series and $sampleCount samples"
+                    contentDescription = buildString {
+                        append("${band.label()} signal history chart with ")
+                        append("${series.size} BSSID series and $sampleCount samples")
+                        if (selectedBssid != null &&
+                            series.any { it.bssid == selectedBssid }
+                        ) {
+                            append("; selected BSSID ")
+                            append(selectedBssid)
+                        }
+                    }
                 }
         ) {
             val plotLeft = 48.dp.toPx()
