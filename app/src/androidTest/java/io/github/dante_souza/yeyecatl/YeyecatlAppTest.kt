@@ -53,7 +53,9 @@ class YeyecatlAppTest {
         onNodeWithText("Start dynamic scan").assertIsDisplayed()
         onNodeWithText("Start dynamic scan").performClick()
         onNodeWithText("Stop dynamic scan").assertIsDisplayed()
-        onNodeWithText("Foreground cadence: every 30 seconds.", substring = true)
+        onNodeWithText("Scans: 0").assertIsDisplayed()
+        onNodeWithText("Next scan in", substring = true).assertIsDisplayed()
+        onNodeWithText("The counter records requests issued", substring = true)
             .assertIsDisplayed()
     }
 
@@ -152,8 +154,8 @@ class YeyecatlAppTest {
 
         onNodeWithText("Observed networks").assertIsDisplayed()
         onNodeWithText("7").assertIsDisplayed()
-        onNodeWithText("BSSID  00:00:00:00:00:01").assertIsDisplayed()
-        onNodeWithText("BSSID  00:00:00:00:00:07").assertIsDisplayed()
+        onNodeWithText("00:00:00:00:00:01").assertIsDisplayed()
+        onNodeWithText("00:00:00:00:00:07").assertIsDisplayed()
     }
 
     @Test
@@ -459,11 +461,11 @@ class YeyecatlAppTest {
 
         onNodeWithText("Observed networks").assertIsDisplayed()
         onNodeWithText("Freshness").assertIsDisplayed()
-        onNodeWithText("BSSID  00:00:00:00:00:01").assertIsDisplayed()
+        onNodeWithText("00:00:00:00:00:01").assertIsDisplayed()
         onNodeWithText("2.4 GHz • Ch 1 • 20 MHz").assertIsDisplayed()
-        onNodeWithText("More").performClick()
-        onNodeWithText("Capabilities  [ESS]").assertIsDisplayed()
-        onNodeWithText("Less").assertIsDisplayed()
+        onNodeWithText("-42 dBm").assertIsDisplayed()
+        onNodeWithText("More").assertIsNotDisplayed()
+        onNodeWithText("Capabilities  [ESS]").assertIsNotDisplayed()
     }
 
     private fun resultsState(
