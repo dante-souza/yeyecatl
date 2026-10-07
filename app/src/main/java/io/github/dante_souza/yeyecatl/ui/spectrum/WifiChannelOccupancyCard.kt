@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiBand
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelOccupancyAnalyzer
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanObservation
+import java.util.Locale
 
 @Composable
 fun WifiChannelOccupancyCard(
@@ -42,14 +43,22 @@ fun WifiChannelOccupancyCard(
                 fontWeight = FontWeight.SemiBold
             )
             Text(
-                text = "Latest-scan primary-channel counts and geometric RF-footprint overlap for ${band.label()}.",
+                text = "${band.label()} · latest scan",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             OverviewRow("Access points", overview.observedAccessPointCount.toString())
             OverviewRow("Primary channels", overview.mappedPrimaryChannelCount.toString())
-            OverviewRow("Overlapping AP pairs", overview.overlappingPairCount.toString())
+            OverviewRow("Overlap pairs", overview.overlappingPairCount.toString())
+            OverviewRow(
+                "Avg. overlap neighbors / AP",
+                String.format(
+                    Locale.US,
+                    "%.1f",
+                    overview.averageOverlappingNeighborsPerAccessPoint
+                )
+            )
 
             if (overview.observedAccessPointCount == 0) {
                 Text(
@@ -60,8 +69,9 @@ fun WifiChannelOccupancyCard(
                 )
             } else {
                 Text(
-                    text = "Most occupied primary channels",
+                    text = "Most occupied",
                     style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(top = 6.dp)
                 )
 
@@ -73,18 +83,23 @@ fun WifiChannelOccupancyCard(
                     )
                 } else {
                     overview.channels.take(6).forEach { channel ->
-                        val strongest = channel.strongestRssiDbm?.let { " · strongest $it dBm" }.orEmpty()
-                        val accessPointLabel = if (channel.accessPointCount == 1) "AP" else "APs"
+                        val strongest = channel.strongestRssiDbm
+                            ?.let { " · strongest $it dBm" }
+                            .orEmpty()
+                        val accessPointLabel =
+                            if (channel.accessPointCount == 1) "AP" else "APs"
                         Text(
-                            text = "ch ${channel.channel} · ${channel.accessPointCount} $accessPointLabel$strongest",
+                            text = "ch ${channel.channel} · ${channel.accessPointCount} " +
+                                "$accessPointLabel$strongest",
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
                 }
 
                 Text(
-                    text = "Largest geometric overlaps",
+                    text = "Largest overlaps",
                     style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(top = 6.dp)
                 )
 
@@ -96,16 +111,27 @@ fun WifiChannelOccupancyCard(
                     )
                 } else {
                     overview.overlappingPairs.take(5).forEach { pair ->
-                        val geometryNote = if (pair.estimatedFromPartialGeometry) {
-                            " · partial geometry"
-                        } else {
-                            ""
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        ) {
+                            Text(
+                                text = "${endpointLabel(pair.firstLabel, pair.firstBssid)} vs " +
+                                    endpointLabel(pair.secondLabel, pair.secondBssid),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "${pair.overlapBandwidthMhz} MHz overlap" +
+                                    if (pair.estimatedFromPartialGeometry) {
+                                        " · partial geometry"
+                                    } else {
+                                        ""
+                                    },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
-                        Text(
-                            text = "${pair.firstLabel} ↔ ${pair.secondLabel} · " +
-                                "${pair.overlapBandwidthMhz} MHz$geometryNote",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
                     }
                 }
             }
@@ -126,7 +152,9 @@ fun WifiChannelOccupancyCard(
             }
 
             Text(
-                text = "Occupancy here means observed AP count, not airtime/channel-utilization measurement. No interference score or channel recommendation is produced.",
+                text = "Occupancy means observed AP count, not airtime utilization. " +
+                    "Overlap is geometric RF-footprint intersection; no interference score " +
+                    "or channel recommendation is produced.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp)
@@ -156,6 +184,20 @@ private fun OverviewRow(
             fontWeight = FontWeight.Medium
         )
     }
+}
+
+private fun endpointLabel(
+    label: String,
+    bssid: String?
+): String {
+    val suffix = bssid
+        ?.split(":")
+        ?.takeLast(2)
+        ?.takeIf { it.size == 2 }
+        ?.joinToString(":")
+        ?: return label
+
+    return "$label [$suffix]"
 }
 
 private fun WifiBand.label(): String =
