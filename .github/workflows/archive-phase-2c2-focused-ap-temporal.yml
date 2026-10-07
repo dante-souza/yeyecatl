@@ -76,6 +76,7 @@ jobs:
           - Validation: **PASS**
           - Device: Samsung Galaxy J8 / SM-J810M / Android 10
           - Feature CI: **37641913450 — PASS**
+          - Integrated dev CI: **37642981387 — PASS**
 
           Preserved behavior includes adaptive exact-BSSID RSSI history, retained signal summary,
           sticky focus across transient scan misses, stable focused-inspector placement, user-triggered
