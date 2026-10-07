@@ -116,6 +116,79 @@ class WifiForegroundScanCadenceTest {
         assertEquals(null, scheduler.pendingDelayMillis)
     }
 
+    @Test
+    fun changingIntervalWhileRunningReschedulesWithoutImmediateRequest() {
+        val scheduler = FakeScheduler()
+        var requests = 0
+        val cadence = WifiForegroundScanCadence(
+            requestScan = { requests += 1 },
+            scheduler = scheduler
+        )
+
+        cadence.enterForeground()
+        cadence.setEnabled(true)
+        assertEquals(1, requests)
+
+        cadence.setIntervalMillis(1_000L)
+
+        assertEquals(1, requests)
+        assertEquals(1_000L, cadence.intervalMillis)
+        assertEquals(1_000L, scheduler.pendingDelayMillis)
+
+        scheduler.runPending()
+
+        assertEquals(2, requests)
+        assertEquals(1_000L, scheduler.pendingDelayMillis)
+    }
+
+    @Test
+    fun changingIntervalWhileDisabledOnlyUpdatesConfiguration() {
+        val scheduler = FakeScheduler()
+        var requests = 0
+        val cadence = WifiForegroundScanCadence(
+            requestScan = { requests += 1 },
+            scheduler = scheduler
+        )
+
+        cadence.setIntervalMillis(10_000L)
+
+        assertEquals(10_000L, cadence.intervalMillis)
+        assertEquals(0, requests)
+        assertEquals(null, scheduler.pendingDelayMillis)
+    }
+
+    @Test
+    fun changingIntervalWhileBackgroundedDoesNotRequestOrSchedule() {
+        val scheduler = FakeScheduler()
+        var requests = 0
+        val cadence = WifiForegroundScanCadence(
+            requestScan = { requests += 1 },
+            scheduler = scheduler
+        )
+
+        cadence.setEnabled(true)
+        cadence.setIntervalMillis(2_000L)
+
+        assertEquals(2_000L, cadence.intervalMillis)
+        assertEquals(0, requests)
+        assertEquals(null, scheduler.pendingDelayMillis)
+
+        cadence.enterForeground()
+
+        assertEquals(1, requests)
+        assertEquals(2_000L, scheduler.pendingDelayMillis)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun changingCadenceRejectsNonPositiveIntervals() {
+        val cadence = WifiForegroundScanCadence(
+            requestScan = {},
+            scheduler = FakeScheduler()
+        )
+
+        cadence.setIntervalMillis(0L)
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun cadenceRejectsNonPositiveIntervals() {
         WifiForegroundScanCadence(
