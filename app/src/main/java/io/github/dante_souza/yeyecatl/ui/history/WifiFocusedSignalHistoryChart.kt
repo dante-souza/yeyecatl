@@ -78,7 +78,7 @@ fun WifiFocusedSignalHistoryChart(
             fontSize = 9.sp
         )
 
-        for (rssi in -30 downTo -90 step 20) {
+        for (rssi in viewport.maxRssiDbm downTo viewport.minRssiDbm step 10) {
             val y = plotTop + WifiSignalHistoryProjection.rssiToY(
                 rssiDbm = rssi,
                 viewport = viewport,
