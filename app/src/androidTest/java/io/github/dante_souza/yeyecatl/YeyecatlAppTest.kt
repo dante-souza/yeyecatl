@@ -136,7 +136,7 @@ class YeyecatlAppTest {
                         ssid = firstSsid,
                         rssiDbm = -40,
                         frequencyMhz = 2412,
-                        observedAtMillis = nowMillis
+                        observedAtMillis = 1_000L
                     ),
                     WifiSignalSample(
                         bssid = "00:00:00:00:00:01",
