@@ -33,3 +33,15 @@ Do not freeze or release until physical validation and acceptance.
 - Additional standard choices: 45, 60 and 120 seconds.
 - Legacy 1 and 2 second persisted choices sanitize to the 30-second default.
 - Polling remains a request cadence; it never guarantees a fresh Android scan result.
+
+
+## J8 validation checkpoint — 2026-10-07
+Validated on the Galaxy J8:
+- final polling policy is present in D5: 5 s and 10 s are Lab, 30 s is Default, with 45/60/120 s standard choices;
+- Signal History renders genuine stored measurements as solid lines;
+- the presentation-only last-known value appears as a faded dashed tail;
+- the dashed tail does not create retained RF samples;
+- the current fixed hold is 15 seconds and is intentionally frozen here before cadence-aware tuning;
+- All mode remains visually dense and is the next readability target.
+
+This checkpoint is the rollback baseline before cadence-aware stale-hold behavior and All-mode history hierarchy are introduced.
