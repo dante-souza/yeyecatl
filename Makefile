@@ -29,7 +29,7 @@ help:
 	  '  make check         Run build, tests, lint and agent validation' \
 	  '  make clean         Remove Gradle build outputs' \
 	  '  make install-debug Install debug APK with adb' \
-  '  make open-app      Launch the already-installed Yeyecatl app' \
+	  '  make open-app      Launch the already-installed Yeyecatl app' \
 	  '  make adb-devices   List connected adb devices' \
 	  '  make device-info   Show connected device/app environment' \
 	  '  make device-smoke  Install and launch the debug app' \
