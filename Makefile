@@ -15,7 +15,7 @@ J8_MODEL := SM-J810M
 G41_MODEL := moto_g41
 DEBUG_APK := app/build/outputs/apk/debug/app-debug.apk
 
-.PHONY: help setup build assemble-debug test unit-test android-test android-test-build android-test-install android-test-diagnostics lint check clean install-debug install-debug-j8 install-debug-g41 open-app open-app-j8 open-app-g41 adb-devices device-info device-info-j8 device-info-g41 device-smoke device-smoke-j8 device-smoke-g41 logcat app-logcat device-diagnostics agents-list skills-list agents-check
+.PHONY: help setup build assemble-debug test unit-test android-test android-test-build android-test-install android-test-diagnostics lint check device-helpers-check clean install-debug install-debug-j8 install-debug-g41 open-app open-app-j8 open-app-g41 adb-devices device-info device-info-j8 device-info-g41 device-smoke device-smoke-j8 device-smoke-g41 logcat app-logcat device-diagnostics agents-list skills-list agents-check
 
 help:
 	@printf '%s\n' \
@@ -111,7 +111,12 @@ android-test-diagnostics: android-test-install
 lint:
 	@$(GRADLE) :app:lintDebug
 
-check: build unit-test android-test-build lint agents-check
+check: build unit-test android-test-build lint device-helpers-check agents-check
+
+device-helpers-check:
+	@$(MAKE) -n device-info-j8 | grep -F '$serial' >/dev/null
+	@$(MAKE) -n device-info-g41 | grep -F '$serial' >/dev/null
+	@printf '%s\n' 'validated device helper shell-variable escaping'
 
 clean:
 	@$(GRADLE) clean
