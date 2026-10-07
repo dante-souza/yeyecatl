@@ -8,10 +8,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiForegroundScanCadence
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiPollingIntervalPolicy
 import io.github.dante_souza.yeyecatl.platform.wifi.AndroidWifiScanCadenceScheduler
 import io.github.dante_souza.yeyecatl.platform.wifi.AndroidWifiScanRepository
 import io.github.dante_souza.yeyecatl.platform.wifi.AndroidWifiPlatformReadinessProvider
@@ -35,14 +37,21 @@ class MainActivity : ComponentActivity() {
     private val wifiScanCadence by lazy {
         WifiForegroundScanCadence(
             requestScan = ::requestDynamicScan,
-            scheduler = AndroidWifiScanCadenceScheduler()
+            scheduler = AndroidWifiScanCadenceScheduler(),
+            intervalMillis = dynamicScanIntervalMillis
         )
+    }
+    private val settings by lazy {
+        getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
     }
 
     private var permissionRequestAttempted by mutableStateOf(false)
     private var readiness by mutableStateOf(initialReadiness())
     private var dynamicScanEnabled by mutableStateOf(false)
     private var dynamicScanRequestCount by mutableIntStateOf(0)
+    private var dynamicScanIntervalMillis by mutableLongStateOf(
+        WifiPollingIntervalPolicy.DEFAULT_INTERVAL_MILLIS
+    )
     private var initialScanRequested = false
 
     private val discoveryPermissionLauncher = registerForActivityResult(
@@ -60,6 +69,14 @@ class MainActivity : ComponentActivity() {
         initialScanRequested = savedInstanceState
             ?.getBoolean(KEY_INITIAL_SCAN_REQUESTED)
             ?: false
+        dynamicScanIntervalMillis = WifiPollingIntervalPolicy.sanitize(
+            runCatching {
+                settings.getLong(
+                    KEY_POLLING_INTERVAL_MILLIS,
+                    WifiPollingIntervalPolicy.DEFAULT_INTERVAL_MILLIS
+                )
+            }.getOrNull()
+        )
         refreshReadiness()
         setContent {
             val scanState by wifiScanRepository.observeScanState().collectAsState()
@@ -70,7 +87,8 @@ class MainActivity : ComponentActivity() {
                 temporalHistory = temporalHistory,
                 dynamicScanEnabled = dynamicScanEnabled,
                 dynamicScanRequestCount = dynamicScanRequestCount,
-                dynamicScanIntervalMillis = wifiScanCadence.intervalMillis,
+                dynamicScanIntervalMillis = dynamicScanIntervalMillis,
+                onDynamicScanIntervalSelected = ::selectDynamicScanInterval,
                 onRequestScan = ::requestScan,
                 onToggleDynamicScan = ::toggleDynamicScan,
                 onRequestDiscoveryPermission = ::requestDiscoveryPermission
@@ -131,6 +149,19 @@ class MainActivity : ComponentActivity() {
         requestScan()
     }
 
+    private fun selectDynamicScanInterval(intervalMillis: Long) {
+        val selectedIntervalMillis = WifiPollingIntervalPolicy.sanitize(intervalMillis)
+        if (selectedIntervalMillis == dynamicScanIntervalMillis) {
+            return
+        }
+
+        dynamicScanIntervalMillis = selectedIntervalMillis
+        wifiScanCadence.setIntervalMillis(selectedIntervalMillis)
+        settings.edit()
+            .putLong(KEY_POLLING_INTERVAL_MILLIS, selectedIntervalMillis)
+            .apply()
+    }
+
     private fun toggleDynamicScan() {
         val nextEnabled = !dynamicScanEnabled
         if (nextEnabled) {
@@ -169,6 +200,8 @@ class MainActivity : ComponentActivity() {
         )
 
     private companion object {
+        const val PREFERENCES_NAME = "yeyecatl_settings"
         const val KEY_INITIAL_SCAN_REQUESTED = "initial_scan_requested"
+        const val KEY_POLLING_INTERVAL_MILLIS = "polling_interval_millis"
     }
 }
