@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -33,7 +34,7 @@ class MainActivity : ComponentActivity() {
     }
     private val wifiScanCadence by lazy {
         WifiForegroundScanCadence(
-            requestScan = ::requestScan,
+            requestScan = ::requestDynamicScan,
             scheduler = AndroidWifiScanCadenceScheduler()
         )
     }
@@ -41,12 +42,15 @@ class MainActivity : ComponentActivity() {
     private var permissionRequestAttempted by mutableStateOf(false)
     private var readiness by mutableStateOf(initialReadiness())
     private var dynamicScanEnabled by mutableStateOf(false)
+    private var dynamicScanRequestCount by mutableIntStateOf(0)
+    private var initialScanRequested = false
 
     private val discoveryPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) {
         permissionRequestAttempted = true
         refreshReadiness()
+        maybeRequestInitialScan()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -62,6 +66,8 @@ class MainActivity : ComponentActivity() {
                 scanState = scanState,
                 temporalHistory = temporalHistory,
                 dynamicScanEnabled = dynamicScanEnabled,
+                dynamicScanRequestCount = dynamicScanRequestCount,
+                dynamicScanIntervalMillis = wifiScanCadence.intervalMillis,
                 onRequestScan = ::requestScan,
                 onToggleDynamicScan = ::toggleDynamicScan,
                 onRequestDiscoveryPermission = ::requestDiscoveryPermission
@@ -73,17 +79,29 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         wifiScanRepository.start()
         wifiScanCadence.enterForeground()
+        refreshReadiness()
+        maybeRequestInitialScan()
     }
 
     override fun onResume() {
         super.onResume()
         refreshReadiness()
+        maybeRequestInitialScan()
     }
 
     override fun onStop() {
         wifiScanCadence.leaveForeground()
         wifiScanRepository.stop()
         super.onStop()
+    }
+
+    private fun maybeRequestInitialScan() {
+        if (initialScanRequested || !readiness.isDiscoveryAllowed) {
+            return
+        }
+
+        initialScanRequested = true
+        requestScan()
     }
 
     private fun requestDiscoveryPermission() {
@@ -100,9 +118,18 @@ class MainActivity : ComponentActivity() {
         wifiScanRepository.requestScan()
     }
 
+    private fun requestDynamicScan() {
+        dynamicScanRequestCount += 1
+        requestScan()
+    }
+
     private fun toggleDynamicScan() {
-        dynamicScanEnabled = !dynamicScanEnabled
-        wifiScanCadence.setEnabled(dynamicScanEnabled)
+        val nextEnabled = !dynamicScanEnabled
+        if (nextEnabled) {
+            dynamicScanRequestCount = 0
+        }
+        dynamicScanEnabled = nextEnabled
+        wifiScanCadence.setEnabled(nextEnabled)
     }
 
     private fun refreshReadiness() {
