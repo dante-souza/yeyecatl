@@ -1,5 +1,7 @@
 package io.github.dante_souza.yeyecatl.ui.spectrum
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -8,7 +10,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -37,6 +43,23 @@ fun WifiSpectrumChart(
     val viewport = remember(band) { WifiSpectrumViewports.forBand(band) }
     val visualObservations = remember(observations, band) {
         WifiSpectrumProjection.visualObservations(observations, band)
+    }
+    var previousRssiByKey by remember(band) {
+        mutableStateOf<Map<String, Int>>(emptyMap())
+    }
+    var targetRssiByKey by remember(band) {
+        mutableStateOf(visualObservations.associate { it.colorKey to it.rssiDbm })
+    }
+    val snapshotTransition = remember(band) { Animatable(1f) }
+
+    LaunchedEffect(visualObservations) {
+        previousRssiByKey = targetRssiByKey
+        targetRssiByKey = visualObservations.associate { it.colorKey to it.rssiDbm }
+        snapshotTransition.snapTo(0f)
+        snapshotTransition.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = SPECTRUM_TRANSITION_MILLIS)
+        )
     }
 
     if (visualObservations.isEmpty()) {
@@ -135,8 +158,12 @@ fun WifiSpectrumChart(
                 isDimmed -> 0.08f
                 else -> 0.22f
             }
+            val previousRssi = previousRssiByKey[observation.colorKey]
+                ?: observation.rssiDbm
+            val animatedRssi = previousRssi +
+                ((observation.rssiDbm - previousRssi) * snapshotTransition.value)
             val topY = plotTop + WifiSpectrumProjection.rssiToY(
-                observation.rssiDbm,
+                animatedRssi.toInt(),
                 viewport,
                 plotHeight
             )
@@ -219,3 +246,5 @@ private fun WifiBand.label(): String =
         WifiBand.Ghz60 -> "60 GHz"
         WifiBand.Unknown -> "Unknown"
     }
+
+private const val SPECTRUM_TRANSITION_MILLIS = 450
