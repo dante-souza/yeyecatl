@@ -88,6 +88,7 @@ fun YeyecatlApp(
     temporalHistory: WifiTemporalObservationHistory = WifiTemporalObservationHistory(),
     dynamicScanEnabled: Boolean = false,
     dynamicScanRequestCount: Int = 0,
+    dynamicScanFreshUpdateCount: Int = 0,
     dynamicScanIntervalMillis: Long = WifiPollingIntervalPolicy.DEFAULT_INTERVAL_MILLIS,
     onDynamicScanIntervalSelected: (Long) -> Unit = {},
     onRequestScan: () -> Unit = {},
@@ -111,6 +112,7 @@ fun YeyecatlApp(
                     temporalHistory = temporalHistory,
                     dynamicScanEnabled = dynamicScanEnabled,
                     dynamicScanRequestCount = dynamicScanRequestCount,
+                    dynamicScanFreshUpdateCount = dynamicScanFreshUpdateCount,
                     dynamicScanIntervalMillis = dynamicScanIntervalMillis,
                     onDynamicScanIntervalSelected = onDynamicScanIntervalSelected,
                     onRequestScan = onRequestScan,
@@ -164,6 +166,7 @@ fun YeyecatlReadinessScreen(
     temporalHistory: WifiTemporalObservationHistory,
     dynamicScanEnabled: Boolean,
     dynamicScanRequestCount: Int,
+    dynamicScanFreshUpdateCount: Int,
     dynamicScanIntervalMillis: Long,
     onDynamicScanIntervalSelected: (Long) -> Unit,
     onRequestScan: () -> Unit,
@@ -248,6 +251,7 @@ fun YeyecatlReadinessScreen(
         if (dynamicScanEnabled) {
             DynamicScanProgress(
                 requestCount = dynamicScanRequestCount,
+                freshUpdateCount = dynamicScanFreshUpdateCount,
                 intervalMillis = dynamicScanIntervalMillis,
                 modifier = Modifier.padding(top = 10.dp)
             )
@@ -327,6 +331,7 @@ private fun PollingIntervalSelector(
 @Composable
 private fun DynamicScanProgress(
     requestCount: Int,
+    freshUpdateCount: Int,
     intervalMillis: Long,
     modifier: Modifier = Modifier
 ) {
@@ -371,11 +376,18 @@ private fun DynamicScanProgress(
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold
                 )
-                Text(
-                    text = "Scans: $requestCount",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "Requests: $requestCount",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Fresh updates: $freshUpdateCount",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             LinearProgressIndicator(
                 progress = { progress },
@@ -387,7 +399,7 @@ private fun DynamicScanProgress(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = "The counter records requests issued; Android may still reject or throttle a request.",
+                text = "History advances only on fresh result updates; Android may reject or throttle requests.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -493,7 +505,7 @@ private fun ScanResults(
         modifier = Modifier.padding(top = 24.dp)
     )
     Text(
-        text = "History follows the selected band and All / Strongest 5 / Weakest 5 filter.",
+        text = "History follows the selected band and signal filter. Each point comes from a Fresh result update; throttled/rejected requests add no point.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(top = 4.dp)
