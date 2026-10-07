@@ -1,5 +1,6 @@
 package io.github.dante_souza.yeyecatl.ui
 
+import android.os.SystemClock
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,7 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -24,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -73,6 +76,7 @@ import io.github.dante_souza.yeyecatl.ui.signal.WifiSignalRankingCard
 import io.github.dante_souza.yeyecatl.ui.spectrum.WifiChannelOccupancyCard
 import io.github.dante_souza.yeyecatl.ui.spectrum.WifiSpectrumChart
 import io.github.dante_souza.yeyecatl.ui.theme.YeyecatlTheme
+import kotlinx.coroutines.delay
 
 @Composable
 fun YeyecatlApp(
@@ -80,6 +84,8 @@ fun YeyecatlApp(
     scanState: WifiScanState = WifiScanState.Idle,
     temporalHistory: WifiTemporalObservationHistory = WifiTemporalObservationHistory(),
     dynamicScanEnabled: Boolean = false,
+    dynamicScanRequestCount: Int = 0,
+    dynamicScanIntervalMillis: Long = 30_000L,
     onRequestScan: () -> Unit = {},
     onToggleDynamicScan: () -> Unit = {},
     onRequestDiscoveryPermission: () -> Unit = {}
@@ -100,6 +106,8 @@ fun YeyecatlApp(
                     scanState = scanState,
                     temporalHistory = temporalHistory,
                     dynamicScanEnabled = dynamicScanEnabled,
+                    dynamicScanRequestCount = dynamicScanRequestCount,
+                    dynamicScanIntervalMillis = dynamicScanIntervalMillis,
                     onRequestScan = onRequestScan,
                     onToggleDynamicScan = onToggleDynamicScan,
                     onRequestDiscoveryPermission = onRequestDiscoveryPermission
@@ -150,6 +158,8 @@ fun YeyecatlReadinessScreen(
     scanState: WifiScanState,
     temporalHistory: WifiTemporalObservationHistory,
     dynamicScanEnabled: Boolean,
+    dynamicScanRequestCount: Int,
+    dynamicScanIntervalMillis: Long,
     onRequestScan: () -> Unit,
     onToggleDynamicScan: () -> Unit,
     onRequestDiscoveryPermission: () -> Unit,
@@ -224,11 +234,10 @@ fun YeyecatlReadinessScreen(
         }
 
         if (dynamicScanEnabled) {
-            Text(
-                text = "Foreground cadence: every 30 seconds. Android may reject individual scan requests.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp)
+            DynamicScanProgress(
+                requestCount = dynamicScanRequestCount,
+                intervalMillis = dynamicScanIntervalMillis,
+                modifier = Modifier.padding(top = 10.dp)
             )
         }
 
@@ -264,6 +273,76 @@ fun YeyecatlReadinessScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 20.dp, bottom = 8.dp)
         )
+    }
+}
+
+@Composable
+private fun DynamicScanProgress(
+    requestCount: Int,
+    intervalMillis: Long,
+    modifier: Modifier = Modifier
+) {
+    val safeIntervalMillis = intervalMillis.coerceAtLeast(1L)
+    var elapsedMillis by remember(requestCount, safeIntervalMillis) {
+        mutableLongStateOf(0L)
+    }
+
+    LaunchedEffect(requestCount, safeIntervalMillis) {
+        val cycleStartedAt = SystemClock.elapsedRealtime()
+        elapsedMillis = 0L
+        while (elapsedMillis < safeIntervalMillis) {
+            delay(DYNAMIC_PROGRESS_TICK_MILLIS)
+            elapsedMillis = (SystemClock.elapsedRealtime() - cycleStartedAt)
+                .coerceIn(0L, safeIntervalMillis)
+        }
+    }
+
+    val progress = (elapsedMillis.toFloat() / safeIntervalMillis.toFloat())
+        .coerceIn(0f, 1f)
+    val remainingSeconds = ((safeIntervalMillis - elapsedMillis + 999L) / 1_000L)
+        .coerceAtLeast(0L)
+
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        tonalElevation = 1.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Dynamic scan",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = "Scans: $requestCount",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Text(
+                text = "Next scan in ${remainingSeconds}s · 30 s foreground cadence",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "The counter records requests issued; Android may still reject or throttle a request.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
@@ -323,6 +402,12 @@ private fun ScanResults(
 
     val selectedDetail = focusedDetail
         ?.takeIf { it.selection.bssid == selectedBssid }
+    val selectedSameSsidBssidCount = selectedDetail
+        ?.latestObservation
+        ?.ssid
+        ?.displayText
+        ?.let { sameSsidCounts[it] }
+        ?: 0
 
     LaunchedEffect(selectedDetail?.selection?.bssid) {
         if (selectedDetail != null) {
@@ -424,6 +509,7 @@ private fun ScanResults(
         )
         WifiObservationDetailCard(
             detail = selectedDetail,
+            sameSsidBssidCount = selectedSameSsidBssidCount,
             onClearSelection = { selectedBssid = null },
             modifier = Modifier.padding(top = 6.dp, bottom = 4.dp)
         )
@@ -445,9 +531,6 @@ private fun ScanResults(
                     observation.bssid == selectedBssid
                 WifiObservationListItem(
                     observation = observation,
-                    sameSsidBssidCount = observation.ssid.displayText
-                        ?.let { sameSsidCounts[it] }
-                        ?: 0,
                     selected = isSelected,
                     onSelect = observation.bssid?.let { bssid ->
                         {
@@ -790,4 +873,5 @@ private fun YeyecatlPlaceholderPreview() {
     YeyecatlApp(scanState = previewScanState())
 }
 
+private const val DYNAMIC_PROGRESS_TICK_MILLIS = 250L
 private const val ALL_BANDS_KEY = "all"
