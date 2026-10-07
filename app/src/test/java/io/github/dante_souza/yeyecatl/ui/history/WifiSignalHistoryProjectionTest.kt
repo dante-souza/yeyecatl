@@ -11,6 +11,37 @@ import org.junit.Test
 
 class WifiSignalHistoryProjectionTest {
     @Test
+    fun staleHoldScalesWithPollingCadenceAndCapsAtNinetySeconds() {
+        assertEquals(15_000L, WifiSignalHistoryProjection.staleHoldMillis(5_000L))
+        assertEquals(20_000L, WifiSignalHistoryProjection.staleHoldMillis(10_000L))
+        assertEquals(45_000L, WifiSignalHistoryProjection.staleHoldMillis(30_000L))
+        assertEquals(67_500L, WifiSignalHistoryProjection.staleHoldMillis(45_000L))
+        assertEquals(90_000L, WifiSignalHistoryProjection.staleHoldMillis(60_000L))
+        assertEquals(90_000L, WifiSignalHistoryProjection.staleHoldMillis(120_000L))
+    }
+
+    @Test
+    fun denseForegroundSelectionUsesStrongestLatestRssi() {
+        fun visual(bssid: String, rssi: Int) = WifiSignalHistoryVisualSeries(
+            label = bssid,
+            bssid = bssid,
+            colorKey = bssid,
+            points = listOf(WifiSignalHistoryPoint(1_000L, rssi))
+        )
+
+        val foreground = WifiSignalHistoryProjection.foregroundBssids(
+            series = listOf(
+                visual("weak", -80),
+                visual("strong", -40),
+                visual("middle", -60)
+            ),
+            maxForegroundSeries = 2
+        )
+
+        assertEquals(setOf("strong", "middle"), foreground)
+    }
+
+    @Test
     fun heldEndpointIsPresentationOnlyAndExpiresAtLimit() {
         val original = listOf(WifiSignalHistoryPoint(10_000L, -62))
         val held = WifiSignalHistoryProjection.heldEndpoint(
