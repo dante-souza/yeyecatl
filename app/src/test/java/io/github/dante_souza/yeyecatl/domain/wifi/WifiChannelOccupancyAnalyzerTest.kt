@@ -37,6 +37,7 @@ class WifiChannelOccupancyAnalyzerTest {
         )
 
         assertEquals(1, overview.overlappingPairCount)
+        assertEquals(2.0 / 3.0, overview.averageOverlappingNeighborsPerAccessPoint, 0.0001)
         assertEquals(10, overview.overlappingPairs.single().overlapBandwidthMhz)
         assertFalse(overview.overlappingPairs.single().estimatedFromPartialGeometry)
     }
@@ -79,6 +80,7 @@ class WifiChannelOccupancyAnalyzerTest {
 
         assertEquals(1, overview.observedAccessPointCount)
         assertEquals(0, overview.overlappingPairCount)
+        assertEquals(0.0, overview.averageOverlappingNeighborsPerAccessPoint, 0.0)
     }
 
     private fun observation(
