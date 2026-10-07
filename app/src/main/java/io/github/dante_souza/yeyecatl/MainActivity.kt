@@ -1,6 +1,7 @@
 package io.github.dante_souza.yeyecatl
 
 import android.os.Bundle
+import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -64,7 +65,11 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
+        val splashStartedAt = SystemClock.elapsedRealtime()
+        val splashScreen = installSplashScreen()
+        splashScreen.setKeepOnScreenCondition {
+            SystemClock.elapsedRealtime() - splashStartedAt < MIN_SPLASH_VISIBLE_MILLIS
+        }
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         initialScanRequested = savedInstanceState
@@ -209,5 +214,6 @@ class MainActivity : ComponentActivity() {
         const val PREFERENCES_NAME = "yeyecatl_settings"
         const val KEY_INITIAL_SCAN_REQUESTED = "initial_scan_requested"
         const val KEY_POLLING_INTERVAL_MILLIS = "polling_interval_millis"
+        const val MIN_SPLASH_VISIBLE_MILLIS = 550L
     }
 }
