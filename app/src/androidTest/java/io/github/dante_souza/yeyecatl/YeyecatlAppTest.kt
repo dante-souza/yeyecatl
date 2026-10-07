@@ -54,9 +54,10 @@ class YeyecatlAppTest {
         onNodeWithText("Start dynamic scan").assertIsDisplayed()
         onNodeWithText("Start dynamic scan").performClick()
         onNodeWithText("Stop dynamic scan").assertIsDisplayed()
-        onNodeWithText("Scans: 0").assertIsDisplayed()
+        onNodeWithText("Requests: 0").assertIsDisplayed()
         onNodeWithText("Next scan in", substring = true).assertIsDisplayed()
-        onNodeWithText("The counter records requests issued", substring = true)
+        onNodeWithText("Fresh updates: 0").assertIsDisplayed()
+        onNodeWithText("History advances only on fresh result updates", substring = true)
             .assertIsDisplayed()
     }
 
@@ -67,6 +68,7 @@ class YeyecatlAppTest {
             YeyecatlApp(
                 dynamicScanEnabled = true,
                 dynamicScanRequestCount = 2,
+                dynamicScanFreshUpdateCount = 1,
                 dynamicScanIntervalMillis = intervalMillis,
                 onDynamicScanIntervalSelected = { intervalMillis = it }
             )
@@ -85,7 +87,8 @@ class YeyecatlAppTest {
 
         onNodeWithText("30 s").performClick()
         onNodeWithText("30s polling", substring = true).assertIsDisplayed()
-        onNodeWithText("Scans: 2").assertIsDisplayed()
+        onNodeWithText("Requests: 2").assertIsDisplayed()
+        onNodeWithText("Fresh updates: 1").assertIsDisplayed()
     }
 
     @Test
