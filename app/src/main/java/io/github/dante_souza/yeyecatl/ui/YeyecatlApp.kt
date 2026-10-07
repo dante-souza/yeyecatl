@@ -301,6 +301,7 @@ private fun DynamicScanProgress(
         .coerceIn(0f, 1f)
     val remainingSeconds = ((safeIntervalMillis - elapsedMillis + 999L) / 1_000L)
         .coerceAtLeast(0L)
+    val intervalSeconds = ((safeIntervalMillis + 999L) / 1_000L).coerceAtLeast(1L)
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -333,7 +334,7 @@ private fun DynamicScanProgress(
                 modifier = Modifier.fillMaxWidth()
             )
             Text(
-                text = "Next scan in ${remainingSeconds}s · 30 s foreground cadence",
+                text = "Next scan in ${remainingSeconds}s · ${intervalSeconds}s foreground cadence",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
