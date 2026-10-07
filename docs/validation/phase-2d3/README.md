@@ -54,8 +54,8 @@ an explicit serial override when needed.
 ## Frozen feature head
 
 ```text
-e2da6e16fbdc9b11fb26ada672f98279e6f81c30
-fix: make lab device parsing portable across shells
+a37b526352ad4df3513d5c63b1470d3dbba43430
+fix: preserve awk fields in Make device helpers
 ```
 
 ## CI
@@ -63,10 +63,11 @@ fix: make lab device parsing portable across shells
 Final feature-head validation run:
 
 ```text
-37687018051
+37687355225 — PASS
 ```
 
-Record the final PASS state here once the run completes.
+The Android build, JVM tests, instrumentation APK build, lint, agent checks and
+portable device-helper regression guard all passed on the frozen feature head.
 
 ## Next and final Phase 2D block
 
