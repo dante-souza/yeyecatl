@@ -284,7 +284,8 @@ fun YeyecatlReadinessScreen(
         }
         ScanResults(
             snapshot = scanState.latestSnapshot,
-            temporalHistory = temporalHistory
+            temporalHistory = temporalHistory,
+            pollingIntervalMillis = dynamicScanIntervalMillis
         )
 
         Text(
@@ -430,7 +431,8 @@ private fun DynamicScanProgress(
 @Composable
 private fun ScanResults(
     snapshot: WifiScanSnapshot?,
-    temporalHistory: WifiTemporalObservationHistory
+    temporalHistory: WifiTemporalObservationHistory,
+    pollingIntervalMillis: Long
 ) {
     if (snapshot == null) {
         ReadinessRow("Observed networks", "No scan results yet")
@@ -535,7 +537,7 @@ private fun ScanResults(
         observations = spectrumObservations,
         band = selectedBand,
         selectedBssid = selectedBssid,
-        pollingIntervalMillis = dynamicScanIntervalMillis,
+        pollingIntervalMillis = pollingIntervalMillis,
         modifier = Modifier.padding(top = 8.dp)
     )
 
