@@ -70,6 +70,7 @@ import io.github.dante_souza.yeyecatl.ui.networks.WifiObservationListItem
 import io.github.dante_souza.yeyecatl.ui.networks.WifiObservationQueryControls
 import io.github.dante_souza.yeyecatl.ui.networks.sameSsidBssidCounts
 import io.github.dante_souza.yeyecatl.ui.signal.WifiSignalRankingCard
+import io.github.dante_souza.yeyecatl.ui.spectrum.WifiChannelOccupancyCard
 import io.github.dante_souza.yeyecatl.ui.spectrum.WifiSpectrumChart
 import io.github.dante_souza.yeyecatl.ui.theme.YeyecatlTheme
 
@@ -341,6 +342,12 @@ private fun ScanResults(
         observations = spectrumObservations,
         band = selectedBand,
         modifier = Modifier.padding(top = 16.dp)
+    )
+
+    WifiChannelOccupancyCard(
+        observations = snapshot.observations,
+        band = selectedBand,
+        modifier = Modifier.padding(top = 20.dp)
     )
 
     Text(
