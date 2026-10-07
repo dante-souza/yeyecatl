@@ -31,6 +31,8 @@ fun WifiObservationDetailCard(
 ) {
     val observation = detail.latestObservation
     val temporalSummary = WifiFocusedSignalHistoryProjection.summary(detail.retainedSignalSamples)
+    val timeSinceLastSeenMillis = (detail.latestSnapshotReceivedAtMillis - detail.lastSeenAtMillis)
+        .coerceAtLeast(0L)
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -68,13 +70,25 @@ fun WifiObservationDetailCard(
                 }
             }
 
+            if (!detail.observedInLatestSnapshot) {
+                Text(
+                    text = "Not seen in latest scan · showing last known observation",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.tertiary
+                )
+                DetailRow(
+                    label = "Last seen",
+                    value = elapsedLabel(timeSinceLastSeenMillis)
+                )
+            }
+
             DetailRow(
                 label = "BSSID",
                 value = detail.selection.bssid,
                 monospace = true
             )
             DetailRow(
-                label = "RSSI",
+                label = if (detail.observedInLatestSnapshot) "RSSI" else "Last observed RSSI",
                 value = observation.rssiDbm?.let { "$it dBm" } ?: "Unavailable"
             )
             DetailRow(
@@ -161,7 +175,7 @@ fun WifiObservationDetailCard(
                     modifier = Modifier.padding(top = 6.dp)
                 )
                 Text(
-                    text = "Exact BSSID · bounded in-memory history · newest 60 retained samples shown.",
+                    text = "Exact BSSID · bounded in-memory history · up to 60 newest retained samples shown.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -180,6 +194,15 @@ fun WifiObservationDetailCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+private fun elapsedLabel(deltaMillis: Long): String {
+    val seconds = deltaMillis / 1_000L
+    return when {
+        seconds < 60L -> "${seconds}s ago"
+        seconds < 3_600L -> "${seconds / 60L}m ${seconds % 60L}s ago"
+        else -> "${seconds / 3_600L}h ${(seconds % 3_600L) / 60L}m ago"
     }
 }
 
