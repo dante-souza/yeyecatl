@@ -194,6 +194,43 @@ fun YeyecatlReadinessScreen(
             modifier = Modifier.padding(top = 6.dp)
         )
 
+        // Place first-scan feedback above the controls so it is visible immediately.
+        // A cached snapshot does not count as a fresh first observation.
+        if (readiness.isDiscoveryAllowed && temporalHistory.freshSnapshotCount == 0) {
+            val firstScanFailed = scanState is WifiScanState.RequestRejected ||
+                scanState is WifiScanState.Error || scanState is WifiScanState.Blocked
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                shape = MaterialTheme.shapes.medium,
+                tonalElevation = 2.dp
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = if (firstScanFailed) {
+                            "First Wi-Fi scan needs attention"
+                        } else {
+                            "Waiting for the first fresh Wi-Fi scan…"
+                        },
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = if (firstScanFailed) {
+                            "Android could not complete the scan. Check the status below and retry."
+                        } else {
+                            "Android may take a moment to return fresh results. You can still use the app."
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (!firstScanFailed) {
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
+                        )
+                    }
+                }
+            }
+        }
+
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
@@ -277,26 +314,6 @@ fun YeyecatlReadinessScreen(
         scanState.message(dynamicScanEnabled)?.let {
             Text(
                 text = it,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-        }
-        if (readiness.isDiscoveryAllowed && scanState.latestSnapshot == null &&
-            (scanState == WifiScanState.Idle || scanState is WifiScanState.ScanRequested)
-        ) {
-            Text(
-                text = "Waiting for the first Wi-Fi scan… This may take a moment on Android.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 12.dp, bottom = 8.dp)
-            )
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-        } else if (scanState.latestSnapshot == null &&
-            scanState is WifiScanState.RequestRejected
-        ) {
-            Text(
-                text = "No scan results yet. Android rejected the request; tap Scan Wi-Fi to retry.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 8.dp)
