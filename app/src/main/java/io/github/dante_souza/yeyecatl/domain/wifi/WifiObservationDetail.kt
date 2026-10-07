@@ -16,7 +16,9 @@ data class WifiObservationDetail(
     val rf: WifiRfCharacteristics,
     val spectrum: WifiSpectrumFootprint,
     val retainedSignalSamples: List<WifiSignalSample>,
-    val latestSnapshotReceivedAtMillis: Long
+    val latestSnapshotReceivedAtMillis: Long,
+    val lastSeenAtMillis: Long,
+    val observedInLatestSnapshot: Boolean
 ) {
     val retainedSignalSampleCount: Int
         get() = retainedSignalSamples.size
@@ -39,13 +41,27 @@ object WifiObservationDetailResolver {
     fun resolve(
         selection: WifiObservationSelection?,
         snapshot: WifiScanSnapshot?,
-        history: WifiTemporalObservationHistory
+        history: WifiTemporalObservationHistory,
+        previousDetail: WifiObservationDetail? = null
     ): WifiObservationDetail? {
         val selected = selection ?: return null
         val currentSnapshot = snapshot ?: return null
         val observation = currentSnapshot.observations.firstOrNull {
             it.bssid == selected.bssid
-        } ?: return null
+        }
+
+        if (observation == null) {
+            val previous = previousDetail
+                ?.takeIf { it.selection.bssid == selected.bssid }
+                ?: return null
+
+            return previous.copy(
+                retainedSignalSamples = history.samplesFor(selected.bssid),
+                latestSnapshotReceivedAtMillis = currentSnapshot.receivedAtMillis,
+                observedInLatestSnapshot = false
+            )
+        }
+
         val rf = WifiRfInterpreter.interpret(observation)
 
         return WifiObservationDetail(
@@ -54,7 +70,9 @@ object WifiObservationDetailResolver {
             rf = rf,
             spectrum = WifiSpectrumGeometry.footprint(rf),
             retainedSignalSamples = history.samplesFor(selected.bssid),
-            latestSnapshotReceivedAtMillis = currentSnapshot.receivedAtMillis
+            latestSnapshotReceivedAtMillis = currentSnapshot.receivedAtMillis,
+            lastSeenAtMillis = currentSnapshot.receivedAtMillis,
+            observedInLatestSnapshot = true
         )
     }
 }
