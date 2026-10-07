@@ -10,6 +10,7 @@ import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.v2.runComposeUiTest
 import io.github.dante_souza.yeyecatl.domain.wifi.ObservedSsid
@@ -330,6 +331,34 @@ class YeyecatlAppTest {
         ).assertIsDisplayed()
         onNodeWithText("Clear selection").performClick()
         onNodeWithText("Selected access point").assertIsNotDisplayed()
+    }
+
+    @Test
+    fun selectingNetworkBringsStableFocusedInspectorIntoView() = runComposeUiTest {
+        val observations = (1..12).map { index ->
+            observation(
+                ssid = "network-$index",
+                bssid = "00:00:00:00:00:${index.toString().padStart(2, '0')}",
+                rssiDbm = -40 - index,
+                frequencyMhz = 2412
+            )
+        }
+        val selectedBssid = requireNotNull(observations.last().bssid)
+
+        setContent {
+            YeyecatlApp(
+                scanState = resultsState(observations)
+            )
+        }
+
+        onNodeWithContentDescription("Select access point $selectedBssid")
+            .performScrollTo()
+            .performClick()
+        waitForIdle()
+
+        onNodeWithText("Focused selection").assertIsDisplayed()
+        onNodeWithText("Selected access point").assertIsDisplayed()
+        onNodeWithText("network-12").assertIsDisplayed()
     }
 
     @Test
