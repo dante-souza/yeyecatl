@@ -85,6 +85,16 @@ Required behavior:
 - enable behavior remains: first dynamic request is immediate;
 - foreground leave/re-enter behavior remains intact.
 
+## Physical-test finding — stable scan card geometry
+
+Moto G41 testing also exposed visible vertical jitter while the Dynamic Scan card
+was updating. The card must keep stable vertical geometry while request counts,
+fresh-update counts and countdown values change.
+
+The live status card therefore reserves fixed line counts for dynamic labels and
+the explanatory copy so timer recomposition cannot reflow the card and push the
+rest of the analyzer up/down.
+
 ## UI
 
 Use responsive chips/buttons consistent with the Phase 2D.3 control language.
