@@ -317,6 +317,17 @@ class YeyecatlAppTest {
         onNodeWithText("2").assertIsDisplayed()
         onNodeWithText("Retained history span").assertIsDisplayed()
         onNodeWithText("2.0 s").assertIsDisplayed()
+        onNodeWithText("Latest retained RSSI").assertIsDisplayed()
+        onNodeWithText("-42 dBm").assertIsDisplayed()
+        onNodeWithText("Strongest retained RSSI").assertIsDisplayed()
+        onNodeWithText("Weakest retained RSSI").assertIsDisplayed()
+        onNodeWithText("-45 dBm").assertIsDisplayed()
+        onNodeWithText("Retained RSSI range").assertIsDisplayed()
+        onNodeWithText("3 dB").assertIsDisplayed()
+        onNodeWithText("Focused RSSI history").assertIsDisplayed()
+        onNodeWithContentDescription(
+            "Focused RSSI history for $selectedBssid with 2 displayed samples"
+        ).assertIsDisplayed()
         onNodeWithText("Clear selection").performClick()
         onNodeWithText("Selected access point").assertIsNotDisplayed()
     }
