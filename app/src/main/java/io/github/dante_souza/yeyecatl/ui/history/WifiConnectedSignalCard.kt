@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -14,7 +15,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,6 +39,11 @@ fun WifiConnectedSignalCard(
     state: WifiConnectedSignalState,
     modifier: Modifier = Modifier
 ) {
+    var scaleModeName by rememberSaveable {
+        mutableStateOf(WifiConnectedSignalScaleMode.Fixed.name)
+    }
+    val scaleMode = WifiConnectedSignalScaleMode.valueOf(scaleModeName)
+
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
@@ -55,6 +63,20 @@ fun WifiConnectedSignalCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+
+            ConnectedScaleSelector(
+                selected = scaleMode,
+                onSelected = { scaleModeName = it.name }
+            )
+
+            val active = state is WifiConnectedSignalState.Connected
+            val inactiveMessage = when (state) {
+                WifiConnectedSignalState.Idle -> "Waiting for connected signal"
+                is WifiConnectedSignalState.Disconnected ->
+                    "Wi-Fi disconnected · waiting for connected signal"
+                is WifiConnectedSignalState.Unavailable -> state.reason
+                is WifiConnectedSignalState.Connected -> null
+            }
 
             when (state) {
                 WifiConnectedSignalState.Idle -> {
@@ -85,17 +107,51 @@ fun WifiConnectedSignalCard(
                         ConnectedValueRow("Frequency", "$it MHz")
                     }
                     ConnectedValueRow("Retained link reads", state.history.samples.size.toString())
-                    WifiConnectedSignalHistoryChart(
-                        history = state.history,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                    Text(
-                        text = "Each point is a WifiInfo RSSI read. Repeated values may reflect Android's own link-update cadence rather than a new radio measurement.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             }
+
+            WifiConnectedSignalHistoryChart(
+                history = state.history,
+                active = active,
+                inactiveMessage = inactiveMessage,
+                scaleMode = scaleMode,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+
+            Text(
+                text = when (scaleMode) {
+                    WifiConnectedSignalScaleMode.Fixed ->
+                        "Fixed scale keeps room-to-room comparisons stable (-100 to -20 dBm)."
+                    WifiConnectedSignalScaleMode.Auto ->
+                        "Auto scale follows the recent signal range in 10 dB steps with hysteresis."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "Each point is a WifiInfo RSSI read. Repeated values may reflect Android's own link-update cadence rather than a new radio measurement.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun ConnectedScaleSelector(
+    selected: WifiConnectedSignalScaleMode,
+    onSelected: (WifiConnectedSignalScaleMode) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        WifiConnectedSignalScaleMode.entries.forEach { mode ->
+            FilterChip(
+                selected = selected == mode,
+                onClick = { onSelected(mode) },
+                label = { Text(mode.name) }
+            )
         }
     }
 }
@@ -123,9 +179,14 @@ private fun ConnectedValueRow(label: String, value: String) {
 @Composable
 private fun WifiConnectedSignalHistoryChart(
     history: WifiConnectedSignalHistory,
+    active: Boolean,
+    inactiveMessage: String?,
+    scaleMode: WifiConnectedSignalScaleMode,
     modifier: Modifier = Modifier
 ) {
     var nowMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var autoRange by remember { mutableStateOf<WifiConnectedRssiRange?>(null) }
+
     LaunchedEffect(Unit) {
         while (true) {
             delay(CONNECTED_CHART_CLOCK_TICK_MILLIS)
@@ -133,35 +194,54 @@ private fun WifiConnectedSignalHistoryChart(
         }
     }
 
-    val viewport = remember(nowMillis) {
+    val rollingViewport = remember(nowMillis) {
         WifiSignalHistoryProjection.rollingViewport(nowMillis)
     }
-    val points = remember(history, viewport) {
-        WifiSignalHistoryProjection.visiblePoints(
-            points = history.samples.map {
-                WifiSignalHistoryPoint(
-                    observedAtMillis = it.observedAtMillis,
-                    rssiDbm = it.rssiDbm
-                )
-            },
-            viewport = viewport
+    val visibleSamples = remember(history, rollingViewport) {
+        history.samples.filter {
+            it.observedAtMillis in rollingViewport.minTimeMillis..rollingViewport.maxTimeMillis
+        }
+    }
+    val autoTarget = remember(history, nowMillis) {
+        WifiConnectedSignalProjection.autoTargetRange(
+            samples = history.samples,
+            nowMillis = nowMillis
         )
     }
 
-    if (points.isEmpty()) {
-        return
+    LaunchedEffect(scaleMode, autoTarget) {
+        if (scaleMode == WifiConnectedSignalScaleMode.Auto) {
+            autoRange = WifiConnectedSignalProjection.stabilizeAutoRange(
+                current = autoRange,
+                target = autoTarget
+            )
+        } else {
+            autoRange = null
+        }
     }
+
+    val rssiRange = when (scaleMode) {
+        WifiConnectedSignalScaleMode.Fixed -> WifiConnectedSignalProjection.fixedRange
+        WifiConnectedSignalScaleMode.Auto -> autoRange ?: autoTarget
+    }
+    val viewport = WifiSignalHistoryViewport(
+        minTimeMillis = rollingViewport.minTimeMillis,
+        maxTimeMillis = rollingViewport.maxTimeMillis,
+        minRssiDbm = rssiRange.minRssiDbm,
+        maxRssiDbm = rssiRange.maxRssiDbm
+    )
 
     val textMeasurer = rememberTextMeasurer()
     val gridColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.28f)
     val axisColor = MaterialTheme.colorScheme.onSurfaceVariant
     val lineColor = MaterialTheme.colorScheme.primary
+    val oldSessionColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
     val textColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     Canvas(
         modifier = modifier
             .fillMaxWidth()
-            .height(180.dp)
+            .height(190.dp)
     ) {
         val plotLeft = 44.dp.toPx()
         val plotRight = size.width - 6.dp.toPx()
@@ -171,7 +251,7 @@ private fun WifiConnectedSignalHistoryChart(
         val plotHeight = (plotBottom - plotTop).coerceAtLeast(1f)
         val labelStyle = TextStyle(color = textColor, fontSize = 9.sp)
 
-        for (rssi in -30 downTo -90 step 20) {
+        WifiConnectedSignalProjection.ticks(rssiRange).forEach { rssi ->
             val y = plotTop + WifiSignalHistoryProjection.rssiToY(
                 rssiDbm = rssi,
                 viewport = viewport,
@@ -208,35 +288,60 @@ private fun WifiConnectedSignalHistoryChart(
         drawLine(axisColor, Offset(plotLeft, plotBottom), Offset(plotRight, plotBottom))
         drawLine(axisColor, Offset(plotLeft, plotTop), Offset(plotLeft, plotBottom))
 
-        WifiSignalHistoryProjection.contiguousSegments(
-            points = points,
-            maxGapMillis = CONNECTED_LINE_GAP_MILLIS
-        ).forEach { segment ->
-            val offsets = segment.map { point ->
-                Offset(
-                    x = plotLeft + WifiSignalHistoryProjection.timeToX(
-                        point.observedAtMillis,
-                        viewport,
-                        plotWidth
-                    ),
-                    y = plotTop + WifiSignalHistoryProjection.rssiToY(
-                        point.rssiDbm,
-                        viewport,
-                        plotHeight
+        if (active) {
+            val latestSessionId = visibleSamples.lastOrNull()?.connectionSessionId
+            WifiConnectedSignalProjection.sessionSegments(
+                samples = visibleSamples,
+                maxGapMillis = CONNECTED_LINE_GAP_MILLIS
+            ).forEach { segment ->
+                val offsets = segment.map { sample ->
+                    Offset(
+                        x = plotLeft + WifiSignalHistoryProjection.timeToX(
+                            sample.observedAtMillis,
+                            viewport,
+                            plotWidth
+                        ),
+                        y = plotTop + WifiSignalHistoryProjection.rssiToY(
+                            sample.rssiDbm,
+                            viewport,
+                            plotHeight
+                        )
                     )
-                )
-            }
-
-            if (offsets.size > 1) {
-                val path = Path().apply {
-                    moveTo(offsets.first().x, offsets.first().y)
-                    offsets.drop(1).forEach { lineTo(it.x, it.y) }
                 }
-                drawPath(path, lineColor, style = Stroke(width = 2.dp.toPx()))
+
+                val segmentColor = if (
+                    segment.lastOrNull()?.connectionSessionId == latestSessionId
+                ) {
+                    lineColor
+                } else {
+                    oldSessionColor
+                }
+
+                if (offsets.size > 1) {
+                    val path = Path().apply {
+                        moveTo(offsets.first().x, offsets.first().y)
+                        offsets.drop(1).forEach { lineTo(it.x, it.y) }
+                    }
+                    drawPath(path, segmentColor, style = Stroke(width = 2.dp.toPx()))
+                }
+                offsets.forEach {
+                    drawCircle(segmentColor, radius = 2.5.dp.toPx(), center = it)
+                }
             }
-            offsets.forEach {
-                drawCircle(lineColor, radius = 2.5.dp.toPx(), center = it)
-            }
+        } else if (!inactiveMessage.isNullOrBlank()) {
+            val messageLayout = textMeasurer.measure(
+                text = inactiveMessage,
+                style = TextStyle(color = textColor, fontSize = 10.sp)
+            )
+            drawText(
+                textMeasurer = textMeasurer,
+                text = inactiveMessage,
+                topLeft = Offset(
+                    plotLeft + (plotWidth - messageLayout.size.width) / 2f,
+                    plotTop + (plotHeight - messageLayout.size.height) / 2f
+                ),
+                style = TextStyle(color = textColor, fontSize = 10.sp)
+            )
         }
     }
 }
