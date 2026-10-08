@@ -25,20 +25,14 @@ object WifiConnectedSignalProjection {
     )
 
     fun autoTargetRange(
-        samples: List<WifiConnectedSignalSample>,
-        nowMillis: Long,
-        recentWindowMillis: Long = DEFAULT_AUTO_WINDOW_MILLIS
+        visibleSamples: List<WifiConnectedSignalSample>
     ): WifiConnectedRssiRange {
-        require(recentWindowMillis > 0L) { "recentWindowMillis must be greater than zero" }
-
-        val cutoff = nowMillis - recentWindowMillis
-        val recent = samples.filter { it.observedAtMillis in cutoff..nowMillis }
-        if (recent.isEmpty()) {
+        if (visibleSamples.isEmpty()) {
             return fixedRange
         }
 
-        val observedMin = recent.minOf { it.rssiDbm }
-        val observedMax = recent.maxOf { it.rssiDbm }
+        val observedMin = visibleSamples.minOf { it.rssiDbm }
+        val observedMax = visibleSamples.maxOf { it.rssiDbm }
 
         var minRssi = floorToTen(observedMin - AUTO_PADDING_DB)
             .coerceAtLeast(AUTO_MIN_RSSI_DBM)
@@ -138,7 +132,6 @@ object WifiConnectedSignalProjection {
     private fun ceilToStep(value: Int, step: Int): Int =
         -Math.floorDiv(-value, step) * step
 
-    private const val DEFAULT_AUTO_WINDOW_MILLIS = 60_000L
     private const val AUTO_PADDING_DB = 5
     private const val AUTO_MIN_SPAN_DB = 30
     private const val AUTO_HYSTERESIS_DB = 10
