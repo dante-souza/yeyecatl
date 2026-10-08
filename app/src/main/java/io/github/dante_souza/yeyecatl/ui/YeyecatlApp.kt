@@ -43,6 +43,7 @@ import io.github.dante_souza.yeyecatl.R
 import io.github.dante_souza.yeyecatl.domain.wifi.ObservedSsid
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiBand
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiConnectedSignalState
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationDetail
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationDetailResolver
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationQuery
@@ -70,6 +71,7 @@ import io.github.dante_souza.yeyecatl.platform.wifi.WifiDiscoveryPermissionStatu
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiHardwareStatus
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiPlatformReadiness
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiPowerStatus
+import io.github.dante_souza.yeyecatl.ui.history.WifiConnectedSignalCard
 import io.github.dante_souza.yeyecatl.ui.history.WifiSignalHistoryChart
 import io.github.dante_souza.yeyecatl.ui.networks.WifiObservationDetailCard
 import io.github.dante_souza.yeyecatl.ui.networks.WifiObservationListItem
@@ -86,6 +88,7 @@ fun YeyecatlApp(
     readiness: WifiPlatformReadiness = previewReadiness(),
     scanState: WifiScanState = WifiScanState.Idle,
     temporalHistory: WifiTemporalObservationHistory = WifiTemporalObservationHistory(),
+    connectedSignalState: WifiConnectedSignalState = WifiConnectedSignalState.Idle,
     dynamicScanEnabled: Boolean = false,
     dynamicScanRequestCount: Int = 0,
     dynamicScanFreshUpdateCount: Int = 0,
@@ -110,6 +113,7 @@ fun YeyecatlApp(
                     readiness = readiness,
                     scanState = scanState,
                     temporalHistory = temporalHistory,
+                    connectedSignalState = connectedSignalState,
                     dynamicScanEnabled = dynamicScanEnabled,
                     dynamicScanRequestCount = dynamicScanRequestCount,
                     dynamicScanFreshUpdateCount = dynamicScanFreshUpdateCount,
@@ -164,6 +168,7 @@ fun YeyecatlReadinessScreen(
     readiness: WifiPlatformReadiness,
     scanState: WifiScanState,
     temporalHistory: WifiTemporalObservationHistory,
+    connectedSignalState: WifiConnectedSignalState,
     dynamicScanEnabled: Boolean,
     dynamicScanRequestCount: Int,
     dynamicScanFreshUpdateCount: Int,
@@ -319,6 +324,10 @@ fun YeyecatlReadinessScreen(
                 modifier = Modifier.padding(top = 8.dp)
             )
         }
+        WifiConnectedSignalCard(
+            state = connectedSignalState,
+            modifier = Modifier.padding(top = 16.dp)
+        )
         ScanResults(
             snapshot = scanState.latestSnapshot,
             temporalHistory = temporalHistory,
