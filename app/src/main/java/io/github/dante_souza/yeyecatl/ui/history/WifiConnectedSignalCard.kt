@@ -123,7 +123,7 @@ fun WifiConnectedSignalCard(
                     WifiConnectedSignalScaleMode.Fixed ->
                         "Fixed scale keeps room-to-room comparisons stable (-100 to -20 dBm)."
                     WifiConnectedSignalScaleMode.Auto ->
-                        "Auto scale follows the recent signal range in 10 dB steps with hysteresis."
+                        "Auto scale fits the visible 2-minute signal range in 10 dB steps with hysteresis."
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -202,10 +202,9 @@ private fun WifiConnectedSignalHistoryChart(
             it.observedAtMillis in rollingViewport.minTimeMillis..rollingViewport.maxTimeMillis
         }
     }
-    val autoTarget = remember(history, nowMillis) {
+    val autoTarget = remember(visibleSamples) {
         WifiConnectedSignalProjection.autoTargetRange(
-            samples = history.samples,
-            nowMillis = nowMillis
+            visibleSamples = visibleSamples
         )
     }
 
