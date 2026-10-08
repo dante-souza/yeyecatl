@@ -17,6 +17,7 @@ import io.github.dante_souza.yeyecatl.domain.wifi.WifiForegroundScanCadence
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiPollingIntervalPolicy
 import io.github.dante_souza.yeyecatl.platform.wifi.AndroidWifiScanCadenceScheduler
 import io.github.dante_souza.yeyecatl.platform.wifi.AndroidWifiScanRepository
+import io.github.dante_souza.yeyecatl.platform.wifi.AndroidConnectedWifiSignalRepository
 import io.github.dante_souza.yeyecatl.platform.wifi.AndroidWifiPlatformReadinessProvider
 import io.github.dante_souza.yeyecatl.platform.wifi.LocationServicesStatus
 import io.github.dante_souza.yeyecatl.platform.wifi.PermissionGrantState
@@ -34,6 +35,9 @@ class MainActivity : ComponentActivity() {
     }
     private val wifiScanRepository by lazy {
         AndroidWifiScanRepository(this, wifiReadinessProvider)
+    }
+    private val connectedWifiSignalRepository by lazy {
+        AndroidConnectedWifiSignalRepository(this)
     }
     private val wifiScanCadence by lazy {
         WifiForegroundScanCadence(
@@ -87,10 +91,12 @@ class MainActivity : ComponentActivity() {
         setContent {
             val scanState by wifiScanRepository.observeScanState().collectAsState()
             val temporalHistory by wifiScanRepository.observeTemporalHistory().collectAsState()
+            val connectedSignalState by connectedWifiSignalRepository.observeState().collectAsState()
             YeyecatlApp(
                 readiness = readiness,
                 scanState = scanState,
                 temporalHistory = temporalHistory,
+                connectedSignalState = connectedSignalState,
                 dynamicScanEnabled = dynamicScanEnabled,
                 dynamicScanRequestCount = dynamicScanRequestCount,
                 dynamicScanFreshUpdateCount =
@@ -108,6 +114,7 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         wifiScanRepository.start()
+        connectedWifiSignalRepository.start()
         wifiScanCadence.enterForeground()
         refreshReadiness()
         maybeRequestInitialScan()
@@ -121,6 +128,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         wifiScanCadence.leaveForeground()
+        connectedWifiSignalRepository.stop()
         wifiScanRepository.stop()
         super.onStop()
     }
