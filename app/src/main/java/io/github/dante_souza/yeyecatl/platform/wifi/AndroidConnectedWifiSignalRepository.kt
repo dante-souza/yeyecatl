@@ -24,6 +24,9 @@ class AndroidConnectedWifiSignalRepository(
 
     private var history = WifiConnectedSignalHistory()
     private var running = false
+    private var connectionSessionId = 0L
+    private var activeSessionBssid: String? = null
+    private var sessionOpen = false
 
     init {
         require(sampleIntervalMillis > 0L) { "sampleIntervalMillis must be greater than zero" }
@@ -60,6 +63,7 @@ class AndroidConnectedWifiSignalRepository(
     private fun sampleNow() {
         val manager = wifiManager
         if (manager == null) {
+            sessionOpen = false
             state.value = WifiConnectedSignalState.Unavailable(
                 reason = "Wi-Fi hardware is unavailable.",
                 history = history
@@ -69,6 +73,7 @@ class AndroidConnectedWifiSignalRepository(
 
         val info = runCatching { manager.connectionInfo }.getOrNull()
         if (info == null || info.networkId < 0) {
+            sessionOpen = false
             state.value = WifiConnectedSignalState.Disconnected(history)
             return
         }
@@ -76,6 +81,7 @@ class AndroidConnectedWifiSignalRepository(
         val bssid = info.bssid
             ?.takeUnless { it.isBlank() || it == REDACTED_BSSID }
         if (bssid == null) {
+            sessionOpen = false
             state.value = WifiConnectedSignalState.Unavailable(
                 reason = "Connected Wi-Fi identity is unavailable to the app.",
                 history = history
@@ -85,6 +91,7 @@ class AndroidConnectedWifiSignalRepository(
 
         val rssiDbm = info.rssi
         if (rssiDbm <= INVALID_RSSI_FLOOR || rssiDbm > 0) {
+            sessionOpen = false
             state.value = WifiConnectedSignalState.Unavailable(
                 reason = "Android did not provide a usable connected-link RSSI.",
                 history = history
@@ -95,6 +102,13 @@ class AndroidConnectedWifiSignalRepository(
         val ssidText = info.ssid
             ?.removeSurrounding("\"")
             ?.takeUnless { it.isBlank() || it == UNKNOWN_SSID }
+
+        if (!sessionOpen || activeSessionBssid != bssid) {
+            connectionSessionId += 1L
+            activeSessionBssid = bssid
+            sessionOpen = true
+        }
+
         val sample = WifiConnectedSignalSample(
             bssid = bssid,
             ssid = ObservedSsid(
@@ -104,7 +118,8 @@ class AndroidConnectedWifiSignalRepository(
             ),
             rssiDbm = rssiDbm,
             frequencyMhz = info.frequency.takeIf { it > 0 },
-            observedAtMillis = System.currentTimeMillis()
+            observedAtMillis = System.currentTimeMillis(),
+            connectionSessionId = connectionSessionId
         )
         history = WifiConnectedSignalAccumulator.append(history, sample)
         state.value = WifiConnectedSignalState.Connected(
