@@ -3,6 +3,7 @@ name: Archive Phase 2D.5.3 connected RSSI release
 on:
   push:
     branches:
+      - main
       - feature/phase-2d5-history-continuity-freshness
     paths:
       - ".github/workflows/archive-phase-2d5-d53-release.yml"
@@ -20,7 +21,8 @@ jobs:
       VALIDATED_CODE_SHA: 95834a808075f0b2a6699d0154baff2d0c237896
       FEATURE_CI_RUN: "37760664643"
       RELEASE_TAG: v0.1.0-phase2d5.3-connected-rssi.1
-      APK_NAME: yeyecatl-v0.1.0-phase2d5.3-connected-rssi.1-debug.apk
+      APK_NAME: yeyecatl-v0.1.0.apk
+      LEGACY_APK_NAME: yeyecatl-v0.1.0-phase2d5.3-connected-rssi.1-debug.apk
 
     steps:
       - name: Check out frozen implementation
@@ -86,10 +88,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          assets=(release/"$APK_NAME" release/phase-2d5-d53-validation-record.md release/SHA256SUMS.txt)
+          assets=(
+            release/"$APK_NAME"
+            release/phase-2d5-d53-validation-record.md
+            release/SHA256SUMS.txt
+          )
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release delete-asset "$RELEASE_TAG" "$LEGACY_APK_NAME"               --repo "$GITHUB_REPOSITORY"               --yes >/dev/null 2>&1 || true
             gh release edit "$RELEASE_TAG"               --repo "$GITHUB_REPOSITORY"               --target "$FREEZE_SHA"               --title "Phase 2D.5.3 Complete Functional Analyzer Baseline — Galaxy J8"               --notes-file release/RELEASE_NOTES.md               --prerelease
-            gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" "${assets[@]}" --clobber
+            gh release upload "$RELEASE_TAG"               --repo "$GITHUB_REPOSITORY"               "${assets[@]}"               --clobber
           else
             gh release create "$RELEASE_TAG"               --repo "$GITHUB_REPOSITORY"               --target "$FREEZE_SHA"               --title "Phase 2D.5.3 Complete Functional Analyzer Baseline — Galaxy J8"               --notes-file release/RELEASE_NOTES.md               --prerelease               "${assets[@]}"
           fi
