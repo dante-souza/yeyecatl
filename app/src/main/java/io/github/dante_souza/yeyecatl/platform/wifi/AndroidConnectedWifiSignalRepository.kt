@@ -93,7 +93,7 @@ class AndroidConnectedWifiSignalRepository(
         }
 
         val ssidText = info.ssid
-            ?.removeSurrounding(""")
+            ?.removeSurrounding("\"")
             ?.takeUnless { it.isBlank() || it == UNKNOWN_SSID }
         val sample = WifiConnectedSignalSample(
             bssid = bssid,
