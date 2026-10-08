@@ -209,14 +209,15 @@ private fun WifiConnectedSignalHistoryChart(
         )
     }
 
-    LaunchedEffect(scaleMode, autoTarget) {
-        if (scaleMode == WifiConnectedSignalScaleMode.Auto) {
-            autoRange = WifiConnectedSignalProjection.stabilizeAutoRange(
-                current = autoRange,
-                target = autoTarget
-            )
-        } else {
-            autoRange = null
+    LaunchedEffect(scaleMode, autoTarget, active) {
+        when {
+            scaleMode == WifiConnectedSignalScaleMode.Fixed -> autoRange = null
+            active -> {
+                autoRange = WifiConnectedSignalProjection.stabilizeAutoRange(
+                    current = autoRange,
+                    target = autoTarget
+                )
+            }
         }
     }
 
