@@ -25,6 +25,10 @@ class AndroidConnectedWifiSignalRepository(
     private var history = WifiConnectedSignalHistory()
     private var running = false
 
+    init {
+        require(sampleIntervalMillis > 0L) { "sampleIntervalMillis must be greater than zero" }
+    }
+
     private val sampleRunnable = object : Runnable {
         override fun run() {
             if (!running) {
