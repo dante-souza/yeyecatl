@@ -51,3 +51,39 @@ D5.3 is intentionally not part of this checkpoint:
 - stable quantized auto-range with hysteresis
 
 This document marks the rollback baseline before those changes.
+
+
+## D5.3 release-ready freeze — 2026-10-08
+
+Validated on the Galaxy J8 as the release-ready connected-RSSI baseline.
+
+### Included
+- persistent Connected AP RSSI chart frame;
+- no active trace while Wi-Fi/connected RSSI is unavailable;
+- explicit waiting/disconnected chart state;
+- connection-session IDs prevent false bridging across disconnect/reconnect;
+- Fixed RSSI scale: -100 to -20 dBm;
+- Auto RSSI scale:
+  - uses every sample visible in the rolling two-minute chart;
+  - adds padding and quantizes bounds to 10 dB steps;
+  - keeps at least a 30 dB vertical span;
+  - clamps to -100..-20 dBm;
+  - expands immediately to avoid clipping;
+  - shrinks only through hysteresis;
+  - retains its scale while disconnected;
+- connected-link history remains independent from nearby scan history.
+
+### J8 observations
+- Auto mode successfully followed a walk from weak signal into very strong signal near the AP.
+- The chart displayed disconnect/reconnect as separate segments rather than a false continuous line.
+- A prior Auto-scale edge case that flattened older weak visible samples against the lower axis boundary was corrected by deriving Auto bounds from the full visible two-minute window.
+- Physical BSSID-roaming validation was not available in the test environment; automated session/BSSID break coverage remains in place.
+
+### CI
+Release-ready feature head before this validation note:
+`95834a808075f0b2a6699d0154baff2d0c237896`
+
+GitHub Actions run `37710586052` completed successfully for that exact head.
+
+### Deferred beyond this release
+Interactive history navigation, sideways panning, larger retained sessions, plot/image export, CSV/session export, annotations and other data-analysis workflows are intentionally out of scope for this Yeyecatl release.
