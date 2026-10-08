@@ -110,7 +110,7 @@ Disconnected behavior:
 
 RSSI scale:
 - Fixed is the default and uses -100 to -20 dBm for stable room-to-room comparison;
-- Auto uses the most recent 60 seconds of connected-link reads;
+- Auto uses all connected-link reads currently visible in the rolling 2-minute chart;
 - Auto adds padding, quantizes bounds to 10 dB steps, keeps at least a 30 dB vertical span, and clamps to -100..-20 dBm;
 - Auto expands immediately to avoid clipping;
 - shrinking requires at least a full 10 dB inward step (hysteresis);
@@ -121,5 +121,5 @@ J8 acceptance:
 - reconnect to the same BSSID: trace returns as a new segment with no bridge across the outage;
 - connect to a different BSSID: D5.2 reset behavior remains intact;
 - Fixed mode remains -100..-20 dBm;
-- Auto mode visibly tightens around recent values without second-to-second axis jitter;
+- Auto mode visibly tightens around the full visible 2-minute range without clipping older visible samples or jittering second-to-second;
 - a strong value around -20 dBm and weak values near -90 dBm are not clipped.
