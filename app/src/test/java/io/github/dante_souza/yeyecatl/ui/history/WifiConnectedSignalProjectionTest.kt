@@ -69,6 +69,13 @@ class WifiConnectedSignalProjectionTest {
             current,
             WifiConnectedSignalProjection.stabilizeAutoRange(
                 current = current,
+                target = WifiConnectedRssiRange(-75, -30)
+            )
+        )
+        assertEquals(
+            WifiConnectedRssiRange(-70, -30),
+            WifiConnectedSignalProjection.stabilizeAutoRange(
+                current = current,
                 target = WifiConnectedRssiRange(-70, -30)
             )
         )
