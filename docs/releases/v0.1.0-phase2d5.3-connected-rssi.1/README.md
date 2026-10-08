@@ -83,7 +83,7 @@ The product boundary is deliberate: **Yeyecatl observes and diagnoses Wi-Fi in t
 
 The release workflow builds the frozen debug APK, runs the repository checks against the frozen source, and publishes:
 
-- `yeyecatl-v0.1.0-phase2d5.3-connected-rssi.1-debug.apk`
+- `yeyecatl-v0.1.0.apk`
 - `phase-2d5-d53-validation-record.md`
 - `SHA256SUMS.txt`
 
