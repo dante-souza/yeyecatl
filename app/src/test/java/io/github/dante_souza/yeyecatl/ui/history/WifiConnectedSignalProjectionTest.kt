@@ -15,11 +15,10 @@ class WifiConnectedSignalProjectionTest {
     @Test
     fun autoRangeQuantizesRecentSignalAndKeepsThirtyDbMinimumSpan() {
         val range = WifiConnectedSignalProjection.autoTargetRange(
-            samples = listOf(
+            visibleSamples = listOf(
                 sample(-67, 50_000L),
                 sample(-61, 55_000L)
-            ),
-            nowMillis = 60_000L
+            )
         )
 
         assertEquals(-80, range.minRssiDbm)
@@ -29,11 +28,10 @@ class WifiConnectedSignalProjectionTest {
     @Test
     fun autoRangeHandlesVeryStrongSignalWithoutClipping() {
         val range = WifiConnectedSignalProjection.autoTargetRange(
-            samples = listOf(
+            visibleSamples = listOf(
                 sample(-23, 50_000L),
                 sample(-21, 55_000L)
-            ),
-            nowMillis = 60_000L
+            )
         )
 
         assertEquals(-50, range.minRssiDbm)
@@ -41,17 +39,24 @@ class WifiConnectedSignalProjectionTest {
     }
 
     @Test
-    fun autoRangeIgnoresOldSamplesOutsideRecentWindow() {
+    fun autoRangeIncludesEverySamplePassedFromVisibleChartWindow() {
         val range = WifiConnectedSignalProjection.autoTargetRange(
-            samples = listOf(
+            visibleSamples = listOf(
                 sample(-90, 1_000L),
                 sample(-55, 119_000L)
-            ),
-            nowMillis = 120_000L
+            )
         )
 
-        assertEquals(-70, range.minRssiDbm)
-        assertEquals(-40, range.maxRssiDbm)
+        assertEquals(-100, range.minRssiDbm)
+        assertEquals(-50, range.maxRssiDbm)
+    }
+
+    @Test
+    fun autoRangeReturnsFixedBoundsWhenNothingIsVisible() {
+        assertEquals(
+            WifiConnectedSignalProjection.fixedRange,
+            WifiConnectedSignalProjection.autoTargetRange(emptyList())
+        )
     }
 
     @Test
