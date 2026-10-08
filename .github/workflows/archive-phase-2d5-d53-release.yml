@@ -1,0 +1,95 @@
+name: Archive Phase 2D.5.3 connected RSSI release
+
+on:
+  push:
+    branches:
+      - feature/phase-2d5-history-continuity-freshness
+    paths:
+      - ".github/workflows/archive-phase-2d5-d53-release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  archive:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      FREEZE_SHA: 28f60adc6a067555416db4e992040dffcfd7845f
+      VALIDATED_CODE_SHA: 95834a808075f0b2a6699d0154baff2d0c237896
+      FEATURE_CI_RUN: "37760664643"
+      RELEASE_TAG: v0.1.0-phase2d5.3-connected-rssi.1
+      APK_NAME: yeyecatl-v0.1.0-phase2d5.3-connected-rssi.1-debug.apk
+
+    steps:
+      - name: Check out frozen implementation
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ env.FREEZE_SHA }}
+          path: source
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6.0.1
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Run frozen repository checks
+        shell: bash
+        run: |
+          cd source
+          make setup
+          make check
+
+      - name: Prepare release assets
+        shell: bash
+        run: |
+          mkdir -p release
+          cp source/app/build/outputs/apk/debug/app-debug.apk "release/$APK_NAME"
+          cp source/docs/validation/phase-2d5/README.md release/phase-2d5-d53-validation-record.md
+          (
+            cd release
+            sha256sum "$APK_NAME" phase-2d5-d53-validation-record.md > SHA256SUMS.txt
+          )
+          cat > release/RELEASE_NOTES.md <<'EOF'
+          # Yeyecatl — Phase 2D.5.3 Complete Functional Analyzer Baseline
+
+          This release freezes the accepted Android field-analyzer platform after Phase 2D.5.3.
+
+          - Frozen source: `28f60adc6a067555416db4e992040dffcfd7845f`
+          - Validated code: `95834a808075f0b2a6699d0154baff2d0c237896`
+          - Feature CI: **37760664643 — PASS**
+          - Device validation: **PASS**
+          - Device: Samsung Galaxy J8 / SM-J810M / Android 10
+
+          Accepted scope includes nearby Wi-Fi discovery, RF interpretation, analyzer spectrum,
+          strongest/weakest filtering, BSSID selection/detail, channel occupancy/overlap,
+          throttling-aware dynamic polling, truthful nearby signal history, and an independent
+          connected-AP RSSI monitor with disconnect session breaks plus Fixed/Auto scaling.
+
+          Yeyecatl remains observation-first: nearby history advances only from fresh Android scan
+          results, held display segments are presentation-only, and repeated connected-link
+          WifiInfo values are not represented as guaranteed independently refreshed radio samples.
+
+          Advanced historical navigation, long-term persistence, annotations, PNG/CSV export,
+          session comparison and other workstation-style data manipulation are intentionally
+          outside this release boundary.
+
+          Physical BSSID-roaming validation remains pending opportunity; automated tests cover
+          BSSID/session separation.
+          EOF
+
+      - name: Publish Phase 2D.5.3 prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          assets=(release/"$APK_NAME" release/phase-2d5-d53-validation-record.md release/SHA256SUMS.txt)
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$RELEASE_TAG"               --repo "$GITHUB_REPOSITORY"               --target "$FREEZE_SHA"               --title "Phase 2D.5.3 Complete Functional Analyzer Baseline — Galaxy J8"               --notes-file release/RELEASE_NOTES.md               --prerelease
+            gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" "${assets[@]}" --clobber
+          else
+            gh release create "$RELEASE_TAG"               --repo "$GITHUB_REPOSITORY"               --target "$FREEZE_SHA"               --title "Phase 2D.5.3 Complete Functional Analyzer Baseline — Galaxy J8"               --notes-file release/RELEASE_NOTES.md               --prerelease               "${assets[@]}"
+          fi

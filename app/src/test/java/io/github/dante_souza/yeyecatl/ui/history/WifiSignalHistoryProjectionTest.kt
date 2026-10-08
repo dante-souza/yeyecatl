@@ -11,6 +11,55 @@ import org.junit.Test
 
 class WifiSignalHistoryProjectionTest {
     @Test
+    fun staleHoldScalesWithPollingCadenceAndCapsAtNinetySeconds() {
+        assertEquals(15_000L, WifiSignalHistoryProjection.staleHoldMillis(5_000L))
+        assertEquals(20_000L, WifiSignalHistoryProjection.staleHoldMillis(10_000L))
+        assertEquals(45_000L, WifiSignalHistoryProjection.staleHoldMillis(30_000L))
+        assertEquals(67_500L, WifiSignalHistoryProjection.staleHoldMillis(45_000L))
+        assertEquals(90_000L, WifiSignalHistoryProjection.staleHoldMillis(60_000L))
+        assertEquals(90_000L, WifiSignalHistoryProjection.staleHoldMillis(120_000L))
+    }
+
+    @Test
+    fun denseForegroundSelectionUsesStrongestLatestRssi() {
+        fun visual(bssid: String, rssi: Int) = WifiSignalHistoryVisualSeries(
+            label = bssid,
+            bssid = bssid,
+            colorKey = bssid,
+            points = listOf(WifiSignalHistoryPoint(1_000L, rssi))
+        )
+
+        val foreground = WifiSignalHistoryProjection.foregroundBssids(
+            series = listOf(
+                visual("weak", -80),
+                visual("strong", -40),
+                visual("middle", -60)
+            ),
+            maxForegroundSeries = 2
+        )
+
+        assertEquals(setOf("strong", "middle"), foreground)
+    }
+
+    @Test
+    fun heldEndpointIsPresentationOnlyAndExpiresAtLimit() {
+        val original = listOf(WifiSignalHistoryPoint(10_000L, -62))
+        val held = WifiSignalHistoryProjection.heldEndpoint(
+            points = original, nowMillis = 20_000L, maxHoldMillis = 15_000L
+        )
+        assertEquals(20_000L, held?.observedAtMillis)
+        assertEquals(-62, held?.rssiDbm)
+        assertEquals(1, original.size)
+        assertEquals(10_000L, original.single().observedAtMillis)
+        assertEquals(null, WifiSignalHistoryProjection.heldEndpoint(
+            original, nowMillis = 25_000L, maxHoldMillis = 15_000L
+        ))
+        assertEquals(null, WifiSignalHistoryProjection.heldEndpoint(
+            original, nowMillis = 9_000L, maxHoldMillis = 15_000L
+        ))
+    }
+
+    @Test
     fun projectsOnlySelectedBssidsAndSelectedBand() {
         val history = WifiTemporalObservationHistory(
             samplesByBssid = mapOf(
@@ -134,6 +183,54 @@ class WifiSignalHistoryProjectionTest {
         assertTrue(viewport.minTimeMillis < viewport.maxTimeMillis)
         assertEquals(5_000L, viewport.maxTimeMillis)
         assertEquals(1, series.single().points.size)
+    }
+
+    @Test
+    fun rollingViewportUsesFixedTwoMinuteWindow() {
+        val viewport = WifiSignalHistoryProjection.rollingViewport(
+            nowMillis = 200_000L
+        )
+
+        assertEquals(80_000L, viewport.minTimeMillis)
+        assertEquals(200_000L, viewport.maxTimeMillis)
+    }
+
+    @Test
+    fun visiblePointsDropsSamplesOutsideRollingWindow() {
+        val viewport = WifiSignalHistoryProjection.rollingViewport(
+            nowMillis = 200_000L
+        )
+        val points = listOf(
+            WifiSignalHistoryPoint(70_000L, -80),
+            WifiSignalHistoryPoint(80_000L, -70),
+            WifiSignalHistoryPoint(150_000L, -60),
+            WifiSignalHistoryPoint(200_000L, -50)
+        )
+
+        assertEquals(
+            listOf(80_000L, 150_000L, 200_000L),
+            WifiSignalHistoryProjection.visiblePoints(points, viewport)
+                .map { it.observedAtMillis }
+        )
+    }
+
+    @Test
+    fun longObservationGapBreaksHistoryLine() {
+        val points = listOf(
+            WifiSignalHistoryPoint(1_000L, -60),
+            WifiSignalHistoryPoint(5_000L, -61),
+            WifiSignalHistoryPoint(30_000L, -62),
+            WifiSignalHistoryPoint(34_000L, -63)
+        )
+
+        val segments = WifiSignalHistoryProjection.contiguousSegments(
+            points = points,
+            maxGapMillis = 15_000L
+        )
+
+        assertEquals(2, segments.size)
+        assertEquals(listOf(1_000L, 5_000L), segments[0].map { it.observedAtMillis })
+        assertEquals(listOf(30_000L, 34_000L), segments[1].map { it.observedAtMillis })
     }
 
     @Test

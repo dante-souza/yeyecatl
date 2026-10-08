@@ -26,6 +26,7 @@ import io.github.dante_souza.yeyecatl.ui.history.WifiFocusedSignalHistoryProject
 @Composable
 fun WifiObservationDetailCard(
     detail: WifiObservationDetail,
+    sameSsidBssidCount: Int = 0,
     onClearSelection: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -88,6 +89,12 @@ fun WifiObservationDetailCard(
                 value = detail.selection.bssid,
                 monospace = true
             )
+            if (sameSsidBssidCount > 1) {
+                DetailRow(
+                    label = "Same SSID",
+                    value = "$sameSsidBssidCount BSSIDs in latest scan"
+                )
+            }
             DetailRow(
                 label = "Observed RSSI",
                 value = observation.rssiDbm?.let { "$it dBm" } ?: "Unavailable"
@@ -187,13 +194,6 @@ fun WifiObservationDetailCard(
                 )
             }
 
-            Text(
-                text = observation.capabilities
-                    ?.let { "Capabilities  $it" }
-                    ?: "Capabilities  not reported",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }

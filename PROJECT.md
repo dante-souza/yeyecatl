@@ -256,6 +256,8 @@ Start simple. Split into Gradle modules only when build time, ownership, or depe
 
 **Phase 2C.1 status:** physically accepted on the Samsung Galaxy J8. Nearby-network cards select one exact BSSID and render current normalized/RF metadata, nominal spectrum geometry and truthful bounded Phase 2A retained-history context. Physical evidence confirms the selected-card state, access-point detail panel, retained RSSI sample context, and preservation of the existing spectrum/history views. Selection remains UI-only; no persistence, vendor lookup, scoring, recommendations or SSID-as-identity behavior is introduced.
 
+**Phase 2D.5.3 status:** complete and release-ready on the Samsung Galaxy J8. The analyzer now includes channel occupancy/overlap, cross-view BSSID interaction, explicit scan-request cadence and throttling semantics, cadence-aware nearby signal-history continuity, dense-history readability, and a separate foreground connected-AP RSSI stream. Connected-link sessions break across disconnect/reconnect, and the dedicated chart provides Fixed (-100..-20 dBm) and hysteretic Auto scaling that contains all samples visible in the rolling two-minute window. Workstation-style history navigation, long-term persistence, annotations and export remain outside this release boundary.
+
 ## 8. Definition of Done
 
 A feature is done only when:

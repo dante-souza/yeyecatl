@@ -1,6 +1,7 @@
 package io.github.dante_souza.yeyecatl
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -53,8 +54,74 @@ class YeyecatlAppTest {
         onNodeWithText("Start dynamic scan").assertIsDisplayed()
         onNodeWithText("Start dynamic scan").performClick()
         onNodeWithText("Stop dynamic scan").assertIsDisplayed()
-        onNodeWithText("Foreground cadence: every 30 seconds.", substring = true)
+        onNodeWithText("Requests: 0").assertIsDisplayed()
+        onNodeWithText("Next scan in", substring = true).assertIsDisplayed()
+        onNodeWithText("Fresh updates: 0").assertIsDisplayed()
+        onNodeWithText("History advances only on fresh result updates", substring = true)
             .assertIsDisplayed()
+    }
+
+    @Test
+    fun dynamicPollingContainsRejectedRequestStatusWithoutGlobalErrorCopy() = runComposeUiTest {
+        val snapshot = WifiScanSnapshot(
+            observations = listOf(observation()),
+            freshness = WifiScanFreshness.Fresh,
+            source = WifiScanResultSource.ApplicationRequest,
+            resultsUpdated = true,
+            receivedAtMillis = 1_000L
+        )
+        val state = WifiScanState.RequestRejected(
+            message = "Android did not accept the scan request. Existing results may be cached.",
+            latestSnapshot = snapshot
+        )
+
+        setContent {
+            YeyecatlApp(
+                scanState = state,
+                dynamicScanEnabled = true,
+                dynamicScanRequestCount = 12,
+                dynamicScanFreshUpdateCount = 3
+            )
+        }
+
+        onNodeWithText("Results available").assertIsDisplayed()
+        onNodeWithText(
+            "Android did not accept the scan request. Existing results may be cached."
+        ).assertIsNotDisplayed()
+        onNodeWithText(
+            "Last request throttled/rejected by Android",
+            substring = true
+        ).assertIsDisplayed()
+    }
+
+    @Test
+    fun pollingIntervalSelectorUpdatesLiveDynamicCadence() = runComposeUiTest {
+        setContent {
+            var intervalMillis by remember { mutableLongStateOf(5_000L) }
+            YeyecatlApp(
+                dynamicScanEnabled = true,
+                dynamicScanRequestCount = 2,
+                dynamicScanFreshUpdateCount = 1,
+                dynamicScanIntervalMillis = intervalMillis,
+                onDynamicScanIntervalSelected = { intervalMillis = it }
+            )
+        }
+
+        onNodeWithText("Polling interval").assertIsDisplayed()
+        onNodeWithText("1 s").assertIsDisplayed()
+        onNodeWithText("2 s").assertIsDisplayed()
+        onNodeWithText("5 s").assertIsDisplayed()
+        onNodeWithText("10 s").assertIsDisplayed()
+        onNodeWithText("30 s").assertIsDisplayed()
+        onNodeWithText("5s polling", substring = true).assertIsDisplayed()
+
+        onNodeWithText("1 s").performClick()
+        onNodeWithText("1s polling", substring = true).assertIsDisplayed()
+
+        onNodeWithText("30 s").performClick()
+        onNodeWithText("30s polling", substring = true).assertIsDisplayed()
+        onNodeWithText("Requests: 2").assertIsDisplayed()
+        onNodeWithText("Fresh updates: 1").assertIsDisplayed()
     }
 
     @Test
@@ -152,12 +219,13 @@ class YeyecatlAppTest {
 
         onNodeWithText("Observed networks").assertIsDisplayed()
         onNodeWithText("7").assertIsDisplayed()
-        onNodeWithText("BSSID  00:00:00:00:00:01").assertIsDisplayed()
-        onNodeWithText("BSSID  00:00:00:00:00:07").assertIsDisplayed()
+        onNodeWithText("00:00:00:00:00:01").assertIsDisplayed()
+        onNodeWithText("00:00:00:00:00:07").assertIsDisplayed()
     }
 
     @Test
     fun signalHistoryFollowsCurrentSignalScope() = runComposeUiTest {
+        val nowMillis = System.currentTimeMillis()
         val observations = (1..7).map { index ->
             observation(
                 ssid = "network-$index",
@@ -274,6 +342,7 @@ class YeyecatlAppTest {
 
     @Test
     fun nearbyNetworkSelectionShowsBssidDetailAndCanBeCleared() = runComposeUiTest {
+        val nowMillis = System.currentTimeMillis()
         val selectedBssid = "00:00:00:00:00:01"
         val observation = observation(
             ssid = "whanganui",
@@ -289,14 +358,14 @@ class YeyecatlAppTest {
                         ssid = observation.ssid,
                         rssiDbm = -45,
                         frequencyMhz = 2412,
-                        observedAtMillis = 1_000L
+                        observedAtMillis = nowMillis - 2_000L
                     ),
                     WifiSignalSample(
                         bssid = selectedBssid,
                         ssid = observation.ssid,
                         rssiDbm = -42,
                         frequencyMhz = 2412,
-                        observedAtMillis = 3_000L
+                        observedAtMillis = nowMillis
                     )
                 )
             )
@@ -310,6 +379,16 @@ class YeyecatlAppTest {
         }
 
         onNodeWithContentDescription("Select access point $selectedBssid").performClick()
+        onNodeWithContentDescription(
+            "2.4 GHz Wi-Fi spectrum chart with 1 observed access points; " +
+                "selected BSSID $selectedBssid"
+        ).fetchSemanticsNode()
+        onNodeWithContentDescription(
+            "2.4 GHz signal history chart with 1 BSSID series and 2 samples; " +
+                "selected BSSID $selectedBssid"
+        ).fetchSemanticsNode()
+        onNodeWithText("Selected BSSID").fetchSemanticsNode()
+        onNodeWithText("0 geometric overlap neighbor(s) in this band").fetchSemanticsNode()
         onNodeWithText("Selected access point").assertIsDisplayed()
         onNodeWithText("Selected").assertIsDisplayed()
         onNodeWithText("Primary frequency").assertIsDisplayed()
@@ -449,11 +528,11 @@ class YeyecatlAppTest {
 
         onNodeWithText("Observed networks").assertIsDisplayed()
         onNodeWithText("Freshness").assertIsDisplayed()
-        onNodeWithText("BSSID  00:00:00:00:00:01").assertIsDisplayed()
+        onNodeWithText("00:00:00:00:00:01").assertIsDisplayed()
         onNodeWithText("2.4 GHz • Ch 1 • 20 MHz").assertIsDisplayed()
-        onNodeWithText("More").performClick()
-        onNodeWithText("Capabilities  [ESS]").assertIsDisplayed()
-        onNodeWithText("Less").assertIsDisplayed()
+        onNodeWithText("-42 dBm").assertIsDisplayed()
+        onNodeWithText("More").assertIsNotDisplayed()
+        onNodeWithText("Capabilities  [ESS]").assertIsNotDisplayed()
     }
 
     private fun resultsState(

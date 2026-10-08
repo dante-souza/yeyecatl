@@ -36,9 +36,9 @@ class WifiSpectrumProjectionTest {
         val viewport = WifiSpectrumViewports.forBand(WifiBand.Ghz2_4)
 
         assertEquals(0f, WifiSpectrumProjection.rssiToY(-30, viewport, 120f))
-        assertEquals(120f, WifiSpectrumProjection.rssiToY(-90, viewport, 120f))
-        assertEquals(0f, WifiSpectrumProjection.rssiToY(-10, viewport, 120f))
         assertEquals(120f, WifiSpectrumProjection.rssiToY(-100, viewport, 120f))
+        assertEquals(0f, WifiSpectrumProjection.rssiToY(-10, viewport, 120f))
+        assertEquals(120f, WifiSpectrumProjection.rssiToY(-110, viewport, 120f))
         assertTrue(
             WifiSpectrumProjection.rssiToY(-40, viewport, 120f) <
                 WifiSpectrumProjection.rssiToY(-80, viewport, 120f)

@@ -16,7 +16,7 @@ data class WifiSpectrumViewport(
     val band: WifiBand,
     val minFrequencyMhz: Int,
     val maxFrequencyMhz: Int,
-    val minRssiDbm: Int = -90,
+    val minRssiDbm: Int = -100,
     val maxRssiDbm: Int = -30,
     val frequencyTicks: List<WifiSpectrumTick>
 )

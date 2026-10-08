@@ -26,7 +26,13 @@ data class WifiSignalHistoryViewport(
 
 object WifiSignalHistoryProjection {
     const val DEFAULT_MAX_POINTS_PER_SERIES: Int = 30
+    const val DEFAULT_ROLLING_WINDOW_MILLIS = 120_000L
+    const val MIN_LINE_GAP_THRESHOLD_MILLIS = 15_000L
     private const val SINGLE_POINT_WINDOW_MILLIS = 30_000L
+    private const val MIN_STALE_HOLD_MILLIS = 15_000L
+    private const val MAX_STALE_HOLD_MILLIS = 90_000L
+    private const val MIN_STALE_GRACE_MILLIS = 10_000L
+    private const val MAX_STALE_GRACE_MILLIS = 30_000L
 
     fun series(
         history: WifiTemporalObservationHistory,
@@ -89,6 +95,92 @@ object WifiSignalHistoryProjection {
         return WifiSignalHistoryViewport(
             minTimeMillis = minTime,
             maxTimeMillis = observedMax
+        )
+    }
+
+    fun rollingViewport(
+        nowMillis: Long,
+        windowMillis: Long = DEFAULT_ROLLING_WINDOW_MILLIS
+    ): WifiSignalHistoryViewport {
+        require(windowMillis > 0L) { "windowMillis must be greater than zero" }
+        return WifiSignalHistoryViewport(
+            minTimeMillis = nowMillis - windowMillis,
+            maxTimeMillis = nowMillis
+        )
+    }
+
+    fun visiblePoints(
+        points: List<WifiSignalHistoryPoint>,
+        viewport: WifiSignalHistoryViewport
+    ): List<WifiSignalHistoryPoint> =
+        points.filter {
+            it.observedAtMillis in viewport.minTimeMillis..viewport.maxTimeMillis
+        }
+
+    fun contiguousSegments(
+        points: List<WifiSignalHistoryPoint>,
+        maxGapMillis: Long
+    ): List<List<WifiSignalHistoryPoint>> {
+        require(maxGapMillis > 0L) { "maxGapMillis must be greater than zero" }
+        if (points.isEmpty()) {
+            return emptyList()
+        }
+
+        val sorted = points.sortedBy { it.observedAtMillis }
+        val segments = mutableListOf<MutableList<WifiSignalHistoryPoint>>()
+        var current = mutableListOf(sorted.first())
+        segments += current
+
+        sorted.drop(1).forEach { point ->
+            val previous = current.last()
+            if (point.observedAtMillis - previous.observedAtMillis > maxGapMillis) {
+                current = mutableListOf(point)
+                segments += current
+            } else {
+                current += point
+            }
+        }
+
+        return segments
+    }
+
+    fun staleHoldMillis(pollingIntervalMillis: Long): Long {
+        require(pollingIntervalMillis > 0L) { "pollingIntervalMillis must be greater than zero" }
+        val graceMillis = (pollingIntervalMillis / 2L)
+            .coerceIn(MIN_STALE_GRACE_MILLIS, MAX_STALE_GRACE_MILLIS)
+        return (pollingIntervalMillis + graceMillis)
+            .coerceIn(MIN_STALE_HOLD_MILLIS, MAX_STALE_HOLD_MILLIS)
+    }
+
+    fun foregroundBssids(
+        series: List<WifiSignalHistoryVisualSeries>,
+        maxForegroundSeries: Int
+    ): Set<String> {
+        require(maxForegroundSeries > 0) { "maxForegroundSeries must be greater than zero" }
+        return series
+            .sortedWith(
+                compareByDescending<WifiSignalHistoryVisualSeries> {
+                    it.points.lastOrNull()?.rssiDbm ?: Int.MIN_VALUE
+                }.thenBy { it.bssid }
+            )
+            .take(maxForegroundSeries)
+            .mapTo(linkedSetOf()) { it.bssid }
+    }
+
+    // Presentation-only endpoint. No sample is appended to temporal history.
+    // The hold expires rather than suggesting indefinitely fresh RF data.
+    fun heldEndpoint(
+        points: List<WifiSignalHistoryPoint>,
+        nowMillis: Long,
+        maxHoldMillis: Long
+    ): WifiSignalHistoryPoint? {
+        require(maxHoldMillis > 0L)
+        val latest = points.maxByOrNull { it.observedAtMillis } ?: return null
+        val age = nowMillis - latest.observedAtMillis
+        if (age < 0L || age >= maxHoldMillis) return null
+        return WifiSignalHistoryPoint(
+            observedAtMillis = nowMillis,
+            rssiDbm = latest.rssiDbm
         )
     }
 

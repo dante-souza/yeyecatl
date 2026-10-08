@@ -1,8 +1,10 @@
 package io.github.dante_souza.yeyecatl.ui
 
+import android.os.SystemClock
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,6 +17,8 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -24,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -38,12 +43,14 @@ import io.github.dante_souza.yeyecatl.R
 import io.github.dante_souza.yeyecatl.domain.wifi.ObservedSsid
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiBand
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiConnectedSignalState
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationDetail
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationDetailResolver
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationQuery
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationSelection
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationQueryEngine
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationSort
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiPollingIntervalPolicy
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanBlockReason
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanFreshness
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanObservation
@@ -64,6 +71,7 @@ import io.github.dante_souza.yeyecatl.platform.wifi.WifiDiscoveryPermissionStatu
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiHardwareStatus
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiPlatformReadiness
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiPowerStatus
+import io.github.dante_souza.yeyecatl.ui.history.WifiConnectedSignalCard
 import io.github.dante_souza.yeyecatl.ui.history.WifiSignalHistoryChart
 import io.github.dante_souza.yeyecatl.ui.networks.WifiObservationDetailCard
 import io.github.dante_souza.yeyecatl.ui.networks.WifiObservationListItem
@@ -73,13 +81,19 @@ import io.github.dante_souza.yeyecatl.ui.signal.WifiSignalRankingCard
 import io.github.dante_souza.yeyecatl.ui.spectrum.WifiChannelOccupancyCard
 import io.github.dante_souza.yeyecatl.ui.spectrum.WifiSpectrumChart
 import io.github.dante_souza.yeyecatl.ui.theme.YeyecatlTheme
+import kotlinx.coroutines.delay
 
 @Composable
 fun YeyecatlApp(
     readiness: WifiPlatformReadiness = previewReadiness(),
     scanState: WifiScanState = WifiScanState.Idle,
     temporalHistory: WifiTemporalObservationHistory = WifiTemporalObservationHistory(),
+    connectedSignalState: WifiConnectedSignalState = WifiConnectedSignalState.Idle,
     dynamicScanEnabled: Boolean = false,
+    dynamicScanRequestCount: Int = 0,
+    dynamicScanFreshUpdateCount: Int = 0,
+    dynamicScanIntervalMillis: Long = WifiPollingIntervalPolicy.DEFAULT_INTERVAL_MILLIS,
+    onDynamicScanIntervalSelected: (Long) -> Unit = {},
     onRequestScan: () -> Unit = {},
     onToggleDynamicScan: () -> Unit = {},
     onRequestDiscoveryPermission: () -> Unit = {}
@@ -99,7 +113,12 @@ fun YeyecatlApp(
                     readiness = readiness,
                     scanState = scanState,
                     temporalHistory = temporalHistory,
+                    connectedSignalState = connectedSignalState,
                     dynamicScanEnabled = dynamicScanEnabled,
+                    dynamicScanRequestCount = dynamicScanRequestCount,
+                    dynamicScanFreshUpdateCount = dynamicScanFreshUpdateCount,
+                    dynamicScanIntervalMillis = dynamicScanIntervalMillis,
+                    onDynamicScanIntervalSelected = onDynamicScanIntervalSelected,
                     onRequestScan = onRequestScan,
                     onToggleDynamicScan = onToggleDynamicScan,
                     onRequestDiscoveryPermission = onRequestDiscoveryPermission
@@ -149,7 +168,12 @@ fun YeyecatlReadinessScreen(
     readiness: WifiPlatformReadiness,
     scanState: WifiScanState,
     temporalHistory: WifiTemporalObservationHistory,
+    connectedSignalState: WifiConnectedSignalState,
     dynamicScanEnabled: Boolean,
+    dynamicScanRequestCount: Int,
+    dynamicScanFreshUpdateCount: Int,
+    dynamicScanIntervalMillis: Long,
+    onDynamicScanIntervalSelected: (Long) -> Unit,
     onRequestScan: () -> Unit,
     onToggleDynamicScan: () -> Unit,
     onRequestDiscoveryPermission: () -> Unit,
@@ -174,6 +198,43 @@ fun YeyecatlReadinessScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 6.dp)
         )
+
+        // Place first-scan feedback above the controls so it is visible immediately.
+        // A cached snapshot does not count as a fresh first observation.
+        if (readiness.isDiscoveryAllowed && temporalHistory.freshSnapshotCount == 0) {
+            val firstScanFailed = scanState is WifiScanState.RequestRejected ||
+                scanState is WifiScanState.Error || scanState is WifiScanState.Blocked
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                shape = MaterialTheme.shapes.medium,
+                tonalElevation = 2.dp
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = if (firstScanFailed) {
+                            "First Wi-Fi scan needs attention"
+                        } else {
+                            "Waiting for the first fresh Wi-Fi scan…"
+                        },
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = if (firstScanFailed) {
+                            "Android could not complete the scan. Check the status below and retry."
+                        } else {
+                            "Android may take a moment to return fresh results. You can still use the app."
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (!firstScanFailed) {
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
+                        )
+                    }
+                }
+            }
+        }
 
         Surface(
             modifier = Modifier
@@ -213,22 +274,29 @@ fun YeyecatlReadinessScreen(
             Text("Scan Wi-Fi")
         }
 
+        PollingIntervalSelector(
+            selectedIntervalMillis = dynamicScanIntervalMillis,
+            onSelected = onDynamicScanIntervalSelected,
+            modifier = Modifier.padding(top = 14.dp)
+        )
+
         OutlinedButton(
             onClick = onToggleDynamicScan,
             enabled = readiness.isDiscoveryAllowed,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp)
+                .padding(top = 10.dp)
         ) {
             Text(if (dynamicScanEnabled) "Stop dynamic scan" else "Start dynamic scan")
         }
 
         if (dynamicScanEnabled) {
-            Text(
-                text = "Foreground cadence: every 30 seconds. Android may reject individual scan requests.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp)
+            DynamicScanProgress(
+                requestCount = dynamicScanRequestCount,
+                freshUpdateCount = dynamicScanFreshUpdateCount,
+                intervalMillis = dynamicScanIntervalMillis,
+                lastRequestRejected = scanState is WifiScanState.RequestRejected,
+                modifier = Modifier.padding(top = 10.dp)
             )
         }
 
@@ -238,14 +306,17 @@ fun YeyecatlReadinessScreen(
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(top = 28.dp)
         )
-        ReadinessRow("Scan state", scanState.label())
+        ReadinessRow(
+            "Scan state",
+            scanState.observationLabel(dynamicScanEnabled)
+        )
         ReadinessRow("Dynamic scan", if (dynamicScanEnabled) "Running" else "Stopped")
         ReadinessRow("Tracked BSSIDs", temporalHistory.samplesByBssid.size.toString())
         ReadinessRow(
             "Signal samples",
             temporalHistory.samplesByBssid.values.sumOf { it.size }.toString()
         )
-        scanState.message()?.let {
+        scanState.message(dynamicScanEnabled)?.let {
             Text(
                 text = it,
                 style = MaterialTheme.typography.bodyMedium,
@@ -253,9 +324,14 @@ fun YeyecatlReadinessScreen(
                 modifier = Modifier.padding(top = 8.dp)
             )
         }
+        WifiConnectedSignalCard(
+            state = connectedSignalState,
+            modifier = Modifier.padding(top = 16.dp)
+        )
         ScanResults(
             snapshot = scanState.latestSnapshot,
-            temporalHistory = temporalHistory
+            temporalHistory = temporalHistory,
+            pollingIntervalMillis = dynamicScanIntervalMillis
         )
 
         Text(
@@ -268,9 +344,145 @@ fun YeyecatlReadinessScreen(
 }
 
 @Composable
+private fun PollingIntervalSelector(
+    selectedIntervalMillis: Long,
+    onSelected: (Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(7.dp)
+    ) {
+        Text(
+            text = "Polling interval",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold
+        )
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            WifiPollingIntervalPolicy.supportedIntervalsMillis.forEach { intervalMillis ->
+                FilterChip(
+                    selected = selectedIntervalMillis == intervalMillis,
+                    onClick = { onSelected(intervalMillis) },
+                    label = { Text(pollingIntervalLabel(intervalMillis)) }
+                )
+            }
+        }
+        Text(
+            text = if (WifiPollingIntervalPolicy.isExperimental(selectedIntervalMillis)) {
+                "Experimental polling: Android may throttle rapid scans. Use only for lab testing."
+            } else {
+                "Standard polling: 30 s recommended. Fresh observations may still arrive less frequently."
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun DynamicScanProgress(
+    requestCount: Int,
+    freshUpdateCount: Int,
+    intervalMillis: Long,
+    lastRequestRejected: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val safeIntervalMillis = intervalMillis.coerceAtLeast(1L)
+    var elapsedMillis by remember(requestCount, safeIntervalMillis) {
+        mutableLongStateOf(0L)
+    }
+
+    LaunchedEffect(requestCount, safeIntervalMillis) {
+        val cycleStartedAt = SystemClock.elapsedRealtime()
+        elapsedMillis = 0L
+        while (elapsedMillis < safeIntervalMillis) {
+            delay(DYNAMIC_PROGRESS_TICK_MILLIS)
+            elapsedMillis = (SystemClock.elapsedRealtime() - cycleStartedAt)
+                .coerceIn(0L, safeIntervalMillis)
+        }
+    }
+
+    val progress = (elapsedMillis.toFloat() / safeIntervalMillis.toFloat())
+        .coerceIn(0f, 1f)
+    val remainingSeconds = ((safeIntervalMillis - elapsedMillis + 999L) / 1_000L)
+        .coerceAtLeast(0L)
+    val intervalSeconds = ((safeIntervalMillis + 999L) / 1_000L).coerceAtLeast(1L)
+
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        tonalElevation = 1.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Dynamic scan",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    softWrap = false
+                )
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "Requests: $requestCount",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                    Text(
+                        text = "Fresh updates: $freshUpdateCount",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                }
+            }
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Text(
+                text = "Next scan in ${remainingSeconds}s · ${intervalSeconds}s polling",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                minLines = 1,
+                maxLines = 1,
+                softWrap = false
+            )
+            Text(
+                text = if (lastRequestRejected) {
+                    "Last request throttled/rejected by Android · history remains on the last fresh result."
+                } else {
+                    "History advances only on fresh result updates; Android may reject or throttle requests."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                minLines = 2,
+                maxLines = 2
+            )
+        }
+    }
+}
+
+@Composable
 private fun ScanResults(
     snapshot: WifiScanSnapshot?,
-    temporalHistory: WifiTemporalObservationHistory
+    temporalHistory: WifiTemporalObservationHistory,
+    pollingIntervalMillis: Long
 ) {
     if (snapshot == null) {
         ReadinessRow("Observed networks", "No scan results yet")
@@ -284,7 +496,7 @@ private fun ScanResults(
     var observationSortName by rememberSaveable {
         mutableStateOf(WifiObservationSort.PlatformOrder.name)
     }
-    var selectedBssid by remember { mutableStateOf<String?>(null) }
+    var selectedBssid by rememberSaveable { mutableStateOf<String?>(null) }
     var focusedDetail by remember { mutableStateOf<WifiObservationDetail?>(null) }
     val focusedSelectionBringIntoViewRequester = remember {
         BringIntoViewRequester()
@@ -323,6 +535,12 @@ private fun ScanResults(
 
     val selectedDetail = focusedDetail
         ?.takeIf { it.selection.bssid == selectedBssid }
+    val selectedSameSsidBssidCount = selectedDetail
+        ?.latestObservation
+        ?.ssid
+        ?.displayText
+        ?.let { sameSsidCounts[it] }
+        ?: 0
 
     LaunchedEffect(selectedDetail?.selection?.bssid) {
         if (selectedDetail != null) {
@@ -341,12 +559,14 @@ private fun ScanResults(
     WifiSpectrumChart(
         observations = spectrumObservations,
         band = selectedBand,
+        selectedBssid = selectedBssid,
         modifier = Modifier.padding(top = 16.dp)
     )
 
     WifiChannelOccupancyCard(
         observations = snapshot.observations,
         band = selectedBand,
+        selectedBssid = selectedBssid,
         modifier = Modifier.padding(top = 20.dp)
     )
 
@@ -357,7 +577,7 @@ private fun ScanResults(
         modifier = Modifier.padding(top = 24.dp)
     )
     Text(
-        text = "History follows the selected band and All / Strongest 5 / Weakest 5 filter.",
+        text = "History follows the selected band and signal filter. Each point comes from a Fresh result update; throttled/rejected requests add no point.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(top = 4.dp)
@@ -366,6 +586,8 @@ private fun ScanResults(
         history = temporalHistory,
         observations = spectrumObservations,
         band = selectedBand,
+        selectedBssid = selectedBssid,
+        pollingIntervalMillis = pollingIntervalMillis,
         modifier = Modifier.padding(top = 8.dp)
     )
 
@@ -381,7 +603,7 @@ private fun ScanResults(
         modifier = Modifier.padding(top = 24.dp)
     )
     Text(
-        text = "Filter and sort only the latest scan list. Spectrum and temporal history remain unchanged.",
+        text = "Filter and sort only the latest scan list. Selecting a BSSID synchronizes the cross-view highlight.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(top = 4.dp)
@@ -421,6 +643,7 @@ private fun ScanResults(
         )
         WifiObservationDetailCard(
             detail = selectedDetail,
+            sameSsidBssidCount = selectedSameSsidBssidCount,
             onClearSelection = { selectedBssid = null },
             modifier = Modifier.padding(top = 6.dp, bottom = 4.dp)
         )
@@ -442,12 +665,23 @@ private fun ScanResults(
                     observation.bssid == selectedBssid
                 WifiObservationListItem(
                     observation = observation,
-                    sameSsidBssidCount = observation.ssid.displayText
-                        ?.let { sameSsidCounts[it] }
-                        ?: 0,
                     selected = isSelected,
                     onSelect = observation.bssid?.let { bssid ->
-                        { selectedBssid = bssid }
+                        {
+                            selectedBssid = bssid
+                            when (val observationBand =
+                                WifiRfInterpreter.interpret(observation).band
+                            ) {
+                                WifiBand.Ghz2_4,
+                                WifiBand.Ghz5,
+                                WifiBand.Ghz6 -> {
+                                    selectedBandName = observationBand.name
+                                    selectedSignalScopeName = WifiSignalScope.All.name
+                                }
+                                WifiBand.Ghz60,
+                                WifiBand.Unknown -> Unit
+                            }
+                        }
                     },
                     modifier = Modifier.padding(top = 10.dp)
                 )
@@ -619,19 +853,25 @@ private fun ScannerImplementationStatus.label(): String =
         ScannerImplementationStatus.NotImplemented -> "Not implemented"
     }
 
-private fun WifiScanState.label(): String =
+private fun WifiScanState.observationLabel(dynamicScanEnabled: Boolean): String =
     when (this) {
         WifiScanState.Idle -> "Idle"
         is WifiScanState.ScanRequested -> "Scan requested"
         is WifiScanState.Results -> "Results available"
-        is WifiScanState.RequestRejected -> "Request rejected"
+        is WifiScanState.RequestRejected ->
+            if (dynamicScanEnabled && latestSnapshot != null) {
+                "Results available"
+            } else {
+                "Request rejected"
+            }
         is WifiScanState.Blocked -> reason.label()
         is WifiScanState.Error -> "Error"
     }
 
-private fun WifiScanState.message(): String? =
+private fun WifiScanState.message(dynamicScanEnabled: Boolean): String? =
     when (this) {
-        is WifiScanState.RequestRejected -> message
+        is WifiScanState.RequestRejected ->
+            message.takeUnless { dynamicScanEnabled && latestSnapshot != null }
         is WifiScanState.Error -> message
         else -> null
     }
@@ -773,4 +1013,15 @@ private fun YeyecatlPlaceholderPreview() {
     YeyecatlApp(scanState = previewScanState())
 }
 
+private fun pollingIntervalLabel(intervalMillis: Long): String =
+    "${intervalMillis / 1_000L} s" +
+        if (intervalMillis == WifiPollingIntervalPolicy.DEFAULT_INTERVAL_MILLIS) {
+            " · Default"
+        } else if (WifiPollingIntervalPolicy.isExperimental(intervalMillis)) {
+            " · Lab"
+        } else {
+            ""
+        }
+
+private const val DYNAMIC_PROGRESS_TICK_MILLIS = 250L
 private const val ALL_BANDS_KEY = "all"

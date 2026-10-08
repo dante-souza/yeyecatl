@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiBand
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelOccupancyAnalyzer
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiRfInterpreter
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanObservation
 import java.util.Locale
 
@@ -22,10 +23,31 @@ import java.util.Locale
 fun WifiChannelOccupancyCard(
     observations: List<WifiScanObservation>,
     band: WifiBand,
+    selectedBssid: String? = null,
     modifier: Modifier = Modifier
 ) {
     val overview = remember(observations, band) {
         WifiChannelOccupancyAnalyzer.analyze(observations, band)
+    }
+    val selectedObservation = remember(observations, band, selectedBssid) {
+        observations.firstOrNull { observation ->
+            observation.bssid == selectedBssid &&
+                WifiRfInterpreter.interpret(observation).band == band
+        }
+    }
+    val selectedRf = selectedObservation?.let(WifiRfInterpreter::interpret)
+    val selectedOverlapCount = selectedBssid?.let { bssid ->
+        overview.overlappingPairs.count { pair ->
+            pair.firstBssid == bssid || pair.secondBssid == bssid
+        }
+    } ?: 0
+    val displayedOverlapPairs = if (selectedBssid == null) {
+        overview.overlappingPairs
+    } else {
+        val (selectedPairs, otherPairs) = overview.overlappingPairs.partition { pair ->
+            pair.firstBssid == selectedBssid || pair.secondBssid == selectedBssid
+        }
+        selectedPairs + otherPairs
     }
 
     Surface(
@@ -59,6 +81,40 @@ fun WifiChannelOccupancyCard(
                     overview.averageOverlappingNeighborsPerAccessPoint
                 )
             )
+
+            if (selectedObservation != null && selectedRf != null) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        Text(
+                            text = "Selected BSSID",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = "${selectedObservation.ssid.displayText ?: "<hidden>"} · " +
+                                "ch ${selectedRf.primaryChannel ?: "?"} · " +
+                                "${selectedObservation.rssiDbm?.let { "$it dBm" } ?: "RSSI unavailable"}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = "$selectedOverlapCount geometric overlap neighbor(s) in this band",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
+            }
 
             if (overview.observedAccessPointCount == 0) {
                 Text(
@@ -110,7 +166,9 @@ fun WifiChannelOccupancyCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
-                    overview.overlappingPairs.take(5).forEach { pair ->
+                    displayedOverlapPairs.take(5).forEach { pair ->
+                        val includesSelection = selectedBssid != null &&
+                            (pair.firstBssid == selectedBssid || pair.secondBssid == selectedBssid)
                         Column(
                             verticalArrangement = Arrangement.spacedBy(2.dp),
                             modifier = Modifier.padding(bottom = 4.dp)
@@ -119,7 +177,16 @@ fun WifiChannelOccupancyCard(
                                 text = "${endpointLabel(pair.firstLabel, pair.firstBssid)} vs " +
                                     endpointLabel(pair.secondLabel, pair.secondBssid),
                                 style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium
+                                fontWeight = if (includesSelection) {
+                                    FontWeight.SemiBold
+                                } else {
+                                    FontWeight.Medium
+                                },
+                                color = if (includesSelection) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                }
                             )
                             Text(
                                 text = "${pair.overlapBandwidthMhz} MHz overlap" +

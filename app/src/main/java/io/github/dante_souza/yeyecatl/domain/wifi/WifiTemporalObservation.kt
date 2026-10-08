@@ -9,7 +9,8 @@ data class WifiSignalSample(
 )
 
 data class WifiTemporalObservationHistory(
-    val samplesByBssid: Map<String, List<WifiSignalSample>> = emptyMap()
+    val samplesByBssid: Map<String, List<WifiSignalSample>> = emptyMap(),
+    val freshSnapshotCount: Int = 0
 ) {
     fun samplesFor(bssid: String): List<WifiSignalSample> =
         samplesByBssid[bssid].orEmpty()
@@ -53,6 +54,9 @@ object WifiTemporalObservationAccumulator {
                 .takeLast(maxSamplesPerBssid)
         }
 
-        return WifiTemporalObservationHistory(samplesByBssid = updated)
+        return WifiTemporalObservationHistory(
+            samplesByBssid = updated,
+            freshSnapshotCount = current.freshSnapshotCount + 1
+        )
     }
 }

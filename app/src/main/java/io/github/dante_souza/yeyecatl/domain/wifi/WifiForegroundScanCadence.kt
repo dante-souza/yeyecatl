@@ -14,7 +14,7 @@ fun interface WifiScanCadenceScheduler {
 class WifiForegroundScanCadence(
     private val requestScan: () -> Unit,
     private val scheduler: WifiScanCadenceScheduler,
-    val intervalMillis: Long = DEFAULT_INTERVAL_MILLIS
+    intervalMillis: Long = DEFAULT_INTERVAL_MILLIS
 ) {
     private var foreground = false
     private var scheduledTask: WifiScanCadenceTask? = null
@@ -22,8 +22,24 @@ class WifiForegroundScanCadence(
     var isEnabled: Boolean = false
         private set
 
+    var intervalMillis: Long = intervalMillis
+        private set
+
     init {
         require(intervalMillis > 0L) { "intervalMillis must be greater than zero" }
+    }
+
+    fun setIntervalMillis(intervalMillis: Long) {
+        require(intervalMillis > 0L) { "intervalMillis must be greater than zero" }
+        if (this.intervalMillis == intervalMillis) {
+            return
+        }
+
+        this.intervalMillis = intervalMillis
+        if (isEnabled && foreground) {
+            cancelScheduledTask()
+            scheduleNext()
+        }
     }
 
     fun setEnabled(enabled: Boolean) {
@@ -86,6 +102,6 @@ class WifiForegroundScanCadence(
     }
 
     companion object {
-        const val DEFAULT_INTERVAL_MILLIS: Long = 30_000L
+        const val DEFAULT_INTERVAL_MILLIS: Long = WifiPollingIntervalPolicy.DEFAULT_INTERVAL_MILLIS
     }
 }
