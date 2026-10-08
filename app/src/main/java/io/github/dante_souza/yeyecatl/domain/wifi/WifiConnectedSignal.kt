@@ -5,7 +5,8 @@ data class WifiConnectedSignalSample(
     val ssid: ObservedSsid,
     val rssiDbm: Int,
     val frequencyMhz: Int?,
-    val observedAtMillis: Long
+    val observedAtMillis: Long,
+    val connectionSessionId: Long = 0L
 )
 
 data class WifiConnectedSignalHistory(
