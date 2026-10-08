@@ -73,8 +73,8 @@ fun WifiConnectedSignalCard(
             val inactiveMessage = when (state) {
                 WifiConnectedSignalState.Idle -> "Waiting for connected signal"
                 is WifiConnectedSignalState.Disconnected ->
-                    "Wi-Fi disconnected · waiting for connected signal"
-                is WifiConnectedSignalState.Unavailable -> state.reason
+                    "Wi-Fi disconnected · waiting for signal"
+                is WifiConnectedSignalState.Unavailable -> "Waiting for measurable signal"
                 is WifiConnectedSignalState.Connected -> null
             }
 
