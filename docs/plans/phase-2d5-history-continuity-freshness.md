@@ -70,3 +70,29 @@ Dense All-mode rendering:
 - Strongest 5 and Weakest 5 remain fully detailed and labeled.
 
 No retained RF samples are synthesized by either policy.
+
+
+## D5.2 — Connected AP RSSI sampling
+Implemented in source; awaiting J8 validation.
+
+Architecture:
+- connected-link RSSI is a separate stream from nearby scan history;
+- Android WifiInfo is read every 1 second while Yeyecatl is foregrounded;
+- these reads do not call WifiManager.startScan() and therefore do not consume the nearby-scan request cadence;
+- the stream resets when the connected BSSID changes, avoiding a false continuous line across roaming;
+- up to 240 link reads are retained; the chart displays the latest rolling 2 minutes;
+- chart segments break when link reads are separated by more than 3 seconds.
+
+Semantics:
+- each plotted point is an Android WifiInfo RSSI read, not a guaranteed new radio measurement;
+- repeated values may reflect Android's own connected-link update cadence;
+- connected-link samples are never inserted into WifiTemporalObservationHistory and never alter nearby AP ranking, spectrum geometry, occupancy or overlap;
+- disconnected/unavailable identity states are surfaced explicitly.
+
+J8 acceptance:
+- Connected AP RSSI card shows SSID, BSSID, current RSSI and frequency while connected;
+- retained link-read count advances roughly once per second in the foreground;
+- nearby dynamic scan counters remain independent;
+- stopping or throttling nearby scans does not stop the connected-link stream;
+- moving far/near the AP should eventually produce visible RSSI change if Android updates WifiInfo;
+- switching/roaming to a different BSSID starts a new connected-link history rather than joining the two traces.
