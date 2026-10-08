@@ -417,6 +417,18 @@ Phase 0 outputs are recorded in `docs/research/`, `docs/architecture/`, and `doc
 - classify band and channel;
 - expose development commands through Makefile.
 
+### Phase 2-zero — Static Signal Ranking
+
+- rank only the latest scan snapshot by RSSI;
+- show up to five strongest BSSID observations;
+- show up to five weakest BSSID observations;
+- keep duplicate SSIDs distinct by BSSID;
+- exclude observations without RSSI from ranking;
+- provide a mutually exclusive `All / Strongest 5 / Weakest 5` spectrum filter;
+- apply strongest/weakest ranking within the currently selected Wi-Fi band;
+- filter only the spectrum projection while preserving the complete scan snapshot and diagnostics;
+- do not introduce history, repeated-scan trends, moving averages or persistence.
+
 ### Phase 2 — Analyzer
 
 - filtering and sorting;
@@ -515,7 +527,7 @@ This is only the architectural direction. The application scaffolding should be 
 
 ## Status
 
-**Project status:** initial definition / research phase.
+**Project status:** complete functional Android field-analyzer baseline — Phase 2D.5.3.
 
 Current artifacts:
 
@@ -532,6 +544,13 @@ Current artifacts:
 - Phase 1E nominal spectrum geometry created.
 - Phase 1F spectrum visualization created.
 - Phase 1H adaptive launcher visual identity created.
+- Phase 2-zero static strongest/weakest signal ranking and `All / Strongest 5 / Weakest 5` spectrum filtering physically validated on the Galaxy J8.
+- Phase 2A foreground dynamic scanning physically validated on the Galaxy J8 with 30-second lifecycle-bound cadence and correct fresh/cached handling.
+- Phase 2A signal-over-time chart physically validated on the Galaxy J8; focused views now use an external legend to avoid overlapping SSID labels while preserving the current band and `All / Strongest 5 / Weakest 5` scope.
+- Phase 2B current-snapshot filtering/sorting and expandable nearby-network cards physically validated on the Galaxy J8.
+- Phase 2C.1 BSSID selection + access-point detail model physically validated on the Galaxy J8; exact physical-device evidence is preserved under `docs/validation/phase-2c1/`.
+- Phase 2D analyzer baseline completed and physically validated on the Galaxy J8: channel occupancy/overlap, interaction polish, throttling-aware polling, analyzer-spectrum readability, truthful temporal-history continuity, and connected-AP RSSI monitoring.
+- Phase 2D.5.3 adds independent connected-link RSSI history with disconnect/reconnect session breaks and Fixed/Auto Y-axis scaling. The release intentionally stops before workstation-style persistence, panning, annotations, PNG/CSV export, and cross-session analysis.
 
 That separation is intentional: first define what the instrument should observe, then choose the exact implementation around the capabilities Android actually exposes.
 

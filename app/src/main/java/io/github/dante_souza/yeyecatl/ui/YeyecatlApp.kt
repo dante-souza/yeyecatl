@@ -1,8 +1,11 @@
 package io.github.dante_souza.yeyecatl.ui
 
+import android.os.SystemClock
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -10,16 +13,24 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -32,17 +43,25 @@ import io.github.dante_souza.yeyecatl.R
 import io.github.dante_souza.yeyecatl.domain.wifi.ObservedSsid
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiBand
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiConnectedSignalState
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationDetail
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationDetailResolver
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationQuery
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationSelection
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationQueryEngine
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiObservationSort
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiPollingIntervalPolicy
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanBlockReason
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanFreshness
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanObservation
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanResultSource
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanSnapshot
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanState
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiSignalRanker
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiSignalScope
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiRfInterpreter
-import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumCompleteness
-import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumGeometry
-import io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumSegment
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiTemporalObservationHistory
 import io.github.dante_souza.yeyecatl.platform.wifi.LocationServicesStatus
 import io.github.dante_souza.yeyecatl.platform.wifi.PermissionGrantState
 import io.github.dante_souza.yeyecatl.platform.wifi.PermissionRequirement
@@ -52,14 +71,31 @@ import io.github.dante_souza.yeyecatl.platform.wifi.WifiDiscoveryPermissionStatu
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiHardwareStatus
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiPlatformReadiness
 import io.github.dante_souza.yeyecatl.platform.wifi.WifiPowerStatus
+import io.github.dante_souza.yeyecatl.ui.history.WifiConnectedSignalCard
+import io.github.dante_souza.yeyecatl.ui.history.WifiSignalHistoryChart
+import io.github.dante_souza.yeyecatl.ui.networks.WifiObservationDetailCard
+import io.github.dante_souza.yeyecatl.ui.networks.WifiObservationListItem
+import io.github.dante_souza.yeyecatl.ui.networks.WifiObservationQueryControls
+import io.github.dante_souza.yeyecatl.ui.networks.sameSsidBssidCounts
+import io.github.dante_souza.yeyecatl.ui.signal.WifiSignalRankingCard
+import io.github.dante_souza.yeyecatl.ui.spectrum.WifiChannelOccupancyCard
 import io.github.dante_souza.yeyecatl.ui.spectrum.WifiSpectrumChart
 import io.github.dante_souza.yeyecatl.ui.theme.YeyecatlTheme
+import kotlinx.coroutines.delay
 
 @Composable
 fun YeyecatlApp(
     readiness: WifiPlatformReadiness = previewReadiness(),
     scanState: WifiScanState = WifiScanState.Idle,
+    temporalHistory: WifiTemporalObservationHistory = WifiTemporalObservationHistory(),
+    connectedSignalState: WifiConnectedSignalState = WifiConnectedSignalState.Idle,
+    dynamicScanEnabled: Boolean = false,
+    dynamicScanRequestCount: Int = 0,
+    dynamicScanFreshUpdateCount: Int = 0,
+    dynamicScanIntervalMillis: Long = WifiPollingIntervalPolicy.DEFAULT_INTERVAL_MILLIS,
+    onDynamicScanIntervalSelected: (Long) -> Unit = {},
     onRequestScan: () -> Unit = {},
+    onToggleDynamicScan: () -> Unit = {},
     onRequestDiscoveryPermission: () -> Unit = {}
 ) {
     YeyecatlTheme {
@@ -76,7 +112,15 @@ fun YeyecatlApp(
                 YeyecatlReadinessScreen(
                     readiness = readiness,
                     scanState = scanState,
+                    temporalHistory = temporalHistory,
+                    connectedSignalState = connectedSignalState,
+                    dynamicScanEnabled = dynamicScanEnabled,
+                    dynamicScanRequestCount = dynamicScanRequestCount,
+                    dynamicScanFreshUpdateCount = dynamicScanFreshUpdateCount,
+                    dynamicScanIntervalMillis = dynamicScanIntervalMillis,
+                    onDynamicScanIntervalSelected = onDynamicScanIntervalSelected,
                     onRequestScan = onRequestScan,
+                    onToggleDynamicScan = onToggleDynamicScan,
                     onRequestDiscoveryPermission = onRequestDiscoveryPermission
                 )
             }
@@ -123,7 +167,15 @@ private fun YeyecatlTopBar() {
 fun YeyecatlReadinessScreen(
     readiness: WifiPlatformReadiness,
     scanState: WifiScanState,
+    temporalHistory: WifiTemporalObservationHistory,
+    connectedSignalState: WifiConnectedSignalState,
+    dynamicScanEnabled: Boolean,
+    dynamicScanRequestCount: Int,
+    dynamicScanFreshUpdateCount: Int,
+    dynamicScanIntervalMillis: Long,
+    onDynamicScanIntervalSelected: (Long) -> Unit,
     onRequestScan: () -> Unit,
+    onToggleDynamicScan: () -> Unit,
     onRequestDiscoveryPermission: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -146,6 +198,43 @@ fun YeyecatlReadinessScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 6.dp)
         )
+
+        // Place first-scan feedback above the controls so it is visible immediately.
+        // A cached snapshot does not count as a fresh first observation.
+        if (readiness.isDiscoveryAllowed && temporalHistory.freshSnapshotCount == 0) {
+            val firstScanFailed = scanState is WifiScanState.RequestRejected ||
+                scanState is WifiScanState.Error || scanState is WifiScanState.Blocked
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                shape = MaterialTheme.shapes.medium,
+                tonalElevation = 2.dp
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = if (firstScanFailed) {
+                            "First Wi-Fi scan needs attention"
+                        } else {
+                            "Waiting for the first fresh Wi-Fi scan…"
+                        },
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = if (firstScanFailed) {
+                            "Android could not complete the scan. Check the status below and retry."
+                        } else {
+                            "Android may take a moment to return fresh results. You can still use the app."
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (!firstScanFailed) {
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
+                        )
+                    }
+                }
+            }
+        }
 
         Surface(
             modifier = Modifier
@@ -177,12 +266,38 @@ fun YeyecatlReadinessScreen(
 
         Button(
             onClick = onRequestScan,
-            enabled = readiness.isDiscoveryAllowed,
+            enabled = readiness.isDiscoveryAllowed && !dynamicScanEnabled,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 12.dp)
         ) {
             Text("Scan Wi-Fi")
+        }
+
+        PollingIntervalSelector(
+            selectedIntervalMillis = dynamicScanIntervalMillis,
+            onSelected = onDynamicScanIntervalSelected,
+            modifier = Modifier.padding(top = 14.dp)
+        )
+
+        OutlinedButton(
+            onClick = onToggleDynamicScan,
+            enabled = readiness.isDiscoveryAllowed,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 10.dp)
+        ) {
+            Text(if (dynamicScanEnabled) "Stop dynamic scan" else "Start dynamic scan")
+        }
+
+        if (dynamicScanEnabled) {
+            DynamicScanProgress(
+                requestCount = dynamicScanRequestCount,
+                freshUpdateCount = dynamicScanFreshUpdateCount,
+                intervalMillis = dynamicScanIntervalMillis,
+                lastRequestRejected = scanState is WifiScanState.RequestRejected,
+                modifier = Modifier.padding(top = 10.dp)
+            )
         }
 
         Text(
@@ -191,8 +306,17 @@ fun YeyecatlReadinessScreen(
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(top = 28.dp)
         )
-        ReadinessRow("Scan state", scanState.label())
-        scanState.message()?.let {
+        ReadinessRow(
+            "Scan state",
+            scanState.observationLabel(dynamicScanEnabled)
+        )
+        ReadinessRow("Dynamic scan", if (dynamicScanEnabled) "Running" else "Stopped")
+        ReadinessRow("Tracked BSSIDs", temporalHistory.samplesByBssid.size.toString())
+        ReadinessRow(
+            "Signal samples",
+            temporalHistory.samplesByBssid.values.sumOf { it.size }.toString()
+        )
+        scanState.message(dynamicScanEnabled)?.let {
             Text(
                 text = it,
                 style = MaterialTheme.typography.bodyMedium,
@@ -200,7 +324,15 @@ fun YeyecatlReadinessScreen(
                 modifier = Modifier.padding(top = 8.dp)
             )
         }
-        ScanResults(scanState.latestSnapshot)
+        WifiConnectedSignalCard(
+            state = connectedSignalState,
+            modifier = Modifier.padding(top = 16.dp)
+        )
+        ScanResults(
+            snapshot = scanState.latestSnapshot,
+            temporalHistory = temporalHistory,
+            pollingIntervalMillis = dynamicScanIntervalMillis
+        )
 
         Text(
             text = "Spectrum geometry is observational; interference scoring is not enabled.",
@@ -212,34 +344,351 @@ fun YeyecatlReadinessScreen(
 }
 
 @Composable
-private fun ScanResults(snapshot: WifiScanSnapshot?) {
+private fun PollingIntervalSelector(
+    selectedIntervalMillis: Long,
+    onSelected: (Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(7.dp)
+    ) {
+        Text(
+            text = "Polling interval",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold
+        )
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            WifiPollingIntervalPolicy.supportedIntervalsMillis.forEach { intervalMillis ->
+                FilterChip(
+                    selected = selectedIntervalMillis == intervalMillis,
+                    onClick = { onSelected(intervalMillis) },
+                    label = { Text(pollingIntervalLabel(intervalMillis)) }
+                )
+            }
+        }
+        Text(
+            text = if (WifiPollingIntervalPolicy.isExperimental(selectedIntervalMillis)) {
+                "Experimental polling: Android may throttle rapid scans. Use only for lab testing."
+            } else {
+                "Standard polling: 30 s recommended. Fresh observations may still arrive less frequently."
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun DynamicScanProgress(
+    requestCount: Int,
+    freshUpdateCount: Int,
+    intervalMillis: Long,
+    lastRequestRejected: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val safeIntervalMillis = intervalMillis.coerceAtLeast(1L)
+    var elapsedMillis by remember(requestCount, safeIntervalMillis) {
+        mutableLongStateOf(0L)
+    }
+
+    LaunchedEffect(requestCount, safeIntervalMillis) {
+        val cycleStartedAt = SystemClock.elapsedRealtime()
+        elapsedMillis = 0L
+        while (elapsedMillis < safeIntervalMillis) {
+            delay(DYNAMIC_PROGRESS_TICK_MILLIS)
+            elapsedMillis = (SystemClock.elapsedRealtime() - cycleStartedAt)
+                .coerceIn(0L, safeIntervalMillis)
+        }
+    }
+
+    val progress = (elapsedMillis.toFloat() / safeIntervalMillis.toFloat())
+        .coerceIn(0f, 1f)
+    val remainingSeconds = ((safeIntervalMillis - elapsedMillis + 999L) / 1_000L)
+        .coerceAtLeast(0L)
+    val intervalSeconds = ((safeIntervalMillis + 999L) / 1_000L).coerceAtLeast(1L)
+
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        tonalElevation = 1.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Dynamic scan",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    softWrap = false
+                )
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "Requests: $requestCount",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                    Text(
+                        text = "Fresh updates: $freshUpdateCount",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                }
+            }
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Text(
+                text = "Next scan in ${remainingSeconds}s · ${intervalSeconds}s polling",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                minLines = 1,
+                maxLines = 1,
+                softWrap = false
+            )
+            Text(
+                text = if (lastRequestRejected) {
+                    "Last request throttled/rejected by Android · history remains on the last fresh result."
+                } else {
+                    "History advances only on fresh result updates; Android may reject or throttle requests."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                minLines = 2,
+                maxLines = 2
+            )
+        }
+    }
+}
+
+@Composable
+private fun ScanResults(
+    snapshot: WifiScanSnapshot?,
+    temporalHistory: WifiTemporalObservationHistory,
+    pollingIntervalMillis: Long
+) {
     if (snapshot == null) {
         ReadinessRow("Observed networks", "No scan results yet")
         return
     }
 
     var selectedBandName by rememberSaveable { mutableStateOf(WifiBand.Ghz2_4.name) }
+    var selectedSignalScopeName by rememberSaveable { mutableStateOf(WifiSignalScope.All.name) }
+    var observationFilterText by rememberSaveable { mutableStateOf("") }
+    var observationBandName by rememberSaveable { mutableStateOf(ALL_BANDS_KEY) }
+    var observationSortName by rememberSaveable {
+        mutableStateOf(WifiObservationSort.PlatformOrder.name)
+    }
+    var selectedBssid by rememberSaveable { mutableStateOf<String?>(null) }
+    var focusedDetail by remember { mutableStateOf<WifiObservationDetail?>(null) }
+    val focusedSelectionBringIntoViewRequester = remember {
+        BringIntoViewRequester()
+    }
+
     val selectedBand = WifiBand.valueOf(selectedBandName)
+    val selectedSignalScope = WifiSignalScope.valueOf(selectedSignalScopeName)
+    val observationBand = observationBandName
+        .takeUnless { it == ALL_BANDS_KEY }
+        ?.let(WifiBand::valueOf)
+    val observationSort = WifiObservationSort.valueOf(observationSortName)
+
+    val spectrumObservations = spectrumObservations(
+        observations = snapshot.observations,
+        band = selectedBand,
+        scope = selectedSignalScope
+    )
+    val visibleObservations = WifiObservationQueryEngine.apply(
+        observations = snapshot.observations,
+        query = WifiObservationQuery(
+            band = observationBand,
+            text = observationFilterText,
+            sort = observationSort
+        )
+    )
+    val sameSsidCounts = sameSsidBssidCounts(snapshot.observations)
+
+    LaunchedEffect(selectedBssid, snapshot.receivedAtMillis, temporalHistory) {
+        focusedDetail = WifiObservationDetailResolver.resolve(
+            selection = selectedBssid?.let(::WifiObservationSelection),
+            snapshot = snapshot,
+            history = temporalHistory,
+            previousDetail = focusedDetail
+        )
+    }
+
+    val selectedDetail = focusedDetail
+        ?.takeIf { it.selection.bssid == selectedBssid }
+    val selectedSameSsidBssidCount = selectedDetail
+        ?.latestObservation
+        ?.ssid
+        ?.displayText
+        ?.let { sameSsidCounts[it] }
+        ?: 0
+
+    LaunchedEffect(selectedDetail?.selection?.bssid) {
+        if (selectedDetail != null) {
+            focusedSelectionBringIntoViewRequester.bringIntoView()
+        }
+    }
 
     BandSelector(
         selectedBand = selectedBand,
         onSelected = { selectedBandName = it.name }
     )
+    SignalScopeSelector(
+        selectedScope = selectedSignalScope,
+        onSelected = { selectedSignalScopeName = it.name }
+    )
     WifiSpectrumChart(
-        observations = snapshot.observations,
+        observations = spectrumObservations,
         band = selectedBand,
+        selectedBssid = selectedBssid,
         modifier = Modifier.padding(top = 16.dp)
     )
 
+    WifiChannelOccupancyCard(
+        observations = snapshot.observations,
+        band = selectedBand,
+        selectedBssid = selectedBssid,
+        modifier = Modifier.padding(top = 20.dp)
+    )
+
+    Text(
+        text = "Signal history",
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.padding(top = 24.dp)
+    )
+    Text(
+        text = "History follows the selected band and signal filter. Each point comes from a Fresh result update; throttled/rejected requests add no point.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 4.dp)
+    )
+    WifiSignalHistoryChart(
+        history = temporalHistory,
+        observations = spectrumObservations,
+        band = selectedBand,
+        selectedBssid = selectedBssid,
+        pollingIntervalMillis = pollingIntervalMillis,
+        modifier = Modifier.padding(top = 8.dp)
+    )
+
+    WifiSignalRankingCard(
+        observations = snapshot.observations,
+        modifier = Modifier.padding(top = 20.dp)
+    )
+
+    Text(
+        text = "Nearby networks",
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.padding(top = 24.dp)
+    )
+    Text(
+        text = "Filter and sort only the latest scan list. Selecting a BSSID synchronizes the cross-view highlight.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 4.dp)
+    )
+    WifiObservationQueryControls(
+        text = observationFilterText,
+        selectedBand = observationBand,
+        selectedSort = observationSort,
+        onTextChange = { observationFilterText = it },
+        onBandSelected = {
+            observationBandName = it?.name ?: ALL_BANDS_KEY
+        },
+        onSortSelected = {
+            observationSortName = it.name
+        },
+        modifier = Modifier.padding(top = 12.dp)
+    )
+    Text(
+        text = "Showing ${visibleObservations.size} of ${snapshot.observations.size}",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 8.dp)
+    )
+
     ReadinessRow("Observed networks", snapshot.observations.size.toString())
+    ReadinessRow("Visible networks", visibleObservations.size.toString())
     ReadinessRow("Freshness", snapshot.freshness.label())
-    snapshot.observations.forEach { observation ->
+
+    if (selectedDetail != null) {
         Text(
-            text = observation.rowText(),
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(top = 8.dp)
+            text = "Focused selection",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .padding(top = 14.dp)
+                .bringIntoViewRequester(focusedSelectionBringIntoViewRequester)
+        )
+        WifiObservationDetailCard(
+            detail = selectedDetail,
+            sameSsidBssidCount = selectedSameSsidBssidCount,
+            onClearSelection = { selectedBssid = null },
+            modifier = Modifier.padding(top = 6.dp, bottom = 4.dp)
         )
     }
+
+    if (visibleObservations.isEmpty()) {
+        Text(
+            text = "No networks match the current filters.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 8.dp)
+        )
+    } else {
+        visibleObservations.forEachIndexed { index, observation ->
+            val observationKey = observation.bssid
+                ?: "${observation.ssid.displayText}:${observation.frequencyMhz}:$index"
+            key(observationKey) {
+                val isSelected = observation.bssid != null &&
+                    observation.bssid == selectedBssid
+                WifiObservationListItem(
+                    observation = observation,
+                    selected = isSelected,
+                    onSelect = observation.bssid?.let { bssid ->
+                        {
+                            selectedBssid = bssid
+                            when (val observationBand =
+                                WifiRfInterpreter.interpret(observation).band
+                            ) {
+                                WifiBand.Ghz2_4,
+                                WifiBand.Ghz5,
+                                WifiBand.Ghz6 -> {
+                                    selectedBandName = observationBand.name
+                                    selectedSignalScopeName = WifiSignalScope.All.name
+                                }
+                                WifiBand.Ghz60,
+                                WifiBand.Unknown -> Unit
+                            }
+                        }
+                    },
+                    modifier = Modifier.padding(top = 10.dp)
+                )
+            }
+        }
+    }
+
 }
 
 @Composable
@@ -266,6 +715,86 @@ private fun BandSelector(
         }
     }
 }
+
+@Composable
+private fun SignalScopeSelector(
+    selectedScope: WifiSignalScope,
+    onSelected: (WifiSignalScope) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp)
+    ) {
+        Text(
+            text = "Spectrum filter",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            WifiSignalScope.entries.forEach { scope ->
+                val buttonModifier = Modifier.weight(1f)
+                val contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp)
+                if (scope == selectedScope) {
+                    Button(
+                        onClick = { onSelected(scope) },
+                        modifier = buttonModifier,
+                        contentPadding = contentPadding
+                    ) {
+                        Text(
+                            text = scope.label(),
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 1
+                        )
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = { onSelected(scope) },
+                        modifier = buttonModifier,
+                        contentPadding = contentPadding
+                    ) {
+                        Text(
+                            text = scope.label(),
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun spectrumObservations(
+    observations: List<WifiScanObservation>,
+    band: WifiBand,
+    scope: WifiSignalScope
+): List<WifiScanObservation> {
+    val observationsInBand = observations.filter {
+        WifiRfInterpreter.interpret(it).band == band
+    }
+
+    return if (scope == WifiSignalScope.All) {
+        observationsInBand
+    } else {
+        WifiSignalRanker.select(
+            observations = observationsInBand,
+            scope = scope
+        )
+    }
+}
+
+private fun WifiSignalScope.label(): String =
+    when (this) {
+        WifiSignalScope.All -> "All"
+        WifiSignalScope.Strongest -> "Strongest 5"
+        WifiSignalScope.Weakest -> "Weakest 5"
+    }
 
 @Composable
 private fun ReadinessRow(label: String, value: String) {
@@ -324,19 +853,25 @@ private fun ScannerImplementationStatus.label(): String =
         ScannerImplementationStatus.NotImplemented -> "Not implemented"
     }
 
-private fun WifiScanState.label(): String =
+private fun WifiScanState.observationLabel(dynamicScanEnabled: Boolean): String =
     when (this) {
         WifiScanState.Idle -> "Idle"
         is WifiScanState.ScanRequested -> "Scan requested"
         is WifiScanState.Results -> "Results available"
-        is WifiScanState.RequestRejected -> "Request rejected"
+        is WifiScanState.RequestRejected ->
+            if (dynamicScanEnabled && latestSnapshot != null) {
+                "Results available"
+            } else {
+                "Request rejected"
+            }
         is WifiScanState.Blocked -> reason.label()
         is WifiScanState.Error -> "Error"
     }
 
-private fun WifiScanState.message(): String? =
+private fun WifiScanState.message(dynamicScanEnabled: Boolean): String? =
     when (this) {
-        is WifiScanState.RequestRejected -> message
+        is WifiScanState.RequestRejected ->
+            message.takeUnless { dynamicScanEnabled && latestSnapshot != null }
         is WifiScanState.Error -> message
         else -> null
     }
@@ -356,29 +891,6 @@ private fun WifiScanFreshness.label(): String =
         WifiScanFreshness.Unknown -> "Unknown"
     }
 
-private fun WifiScanObservation.rowText(): String {
-    val ssidText = ssid.displayText ?: if (ssid.isHidden) {
-        "<hidden>"
-    } else {
-        "<unavailable>"
-    }
-    val rf = WifiRfInterpreter.interpret(this)
-    val footprint = WifiSpectrumGeometry.footprint(rf)
-    return listOf(
-        "SSID: $ssidText",
-        "BSSID: ${bssid ?: "<no BSSID>"}",
-        "RSSI: ${rssiDbm?.let { "$it dBm" } ?: "?"}",
-        "Band: ${rf.band.label()}",
-        "Channel: ${rf.primaryChannel?.toString() ?: "unknown"}",
-        "Primary: ${frequencyMhz?.let { "$it MHz" } ?: "unknown"}",
-        "Width: ${rf.channelWidth.label()}",
-        "Center: ${centerFrequency0Mhz?.let { "$it MHz" } ?: "unknown"}",
-        "Span: ${footprint.spanText()}",
-        "Geometry: ${footprint.completeness.label()}",
-        "Standard: ${rf.wifiStandard.label()}"
-    ).joinToString(separator = "  ")
-}
-
 private fun io.github.dante_souza.yeyecatl.domain.wifi.WifiBand.label(): String =
     when (this) {
         io.github.dante_souza.yeyecatl.domain.wifi.WifiBand.Ghz2_4 -> "2.4 GHz"
@@ -386,46 +898,6 @@ private fun io.github.dante_souza.yeyecatl.domain.wifi.WifiBand.label(): String 
         io.github.dante_souza.yeyecatl.domain.wifi.WifiBand.Ghz6 -> "6 GHz"
         io.github.dante_souza.yeyecatl.domain.wifi.WifiBand.Ghz60 -> "60 GHz"
         io.github.dante_souza.yeyecatl.domain.wifi.WifiBand.Unknown -> "Unknown"
-    }
-
-private fun io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.label(): String =
-    when (this) {
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Mhz20 -> "20 MHz"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Mhz40 -> "40 MHz"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Mhz80 -> "80 MHz"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Mhz160 -> "160 MHz"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Mhz80Plus80 -> "80+80 MHz"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Mhz320 -> "320 MHz"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth.Unknown -> "Unknown"
-    }
-
-private fun io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.label(): String =
-    when (this) {
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Legacy -> "Legacy"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Ieee80211n -> "802.11n"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Ieee80211ac -> "802.11ac"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Ieee80211ax -> "802.11ax"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Ieee80211ad -> "802.11ad"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Ieee80211be -> "802.11be"
-        io.github.dante_souza.yeyecatl.domain.wifi.WifiStandard.Unknown -> "Unknown"
-    }
-
-private fun io.github.dante_souza.yeyecatl.domain.wifi.WifiSpectrumFootprint.spanText(): String =
-    if (segments.isEmpty()) {
-        "unavailable"
-    } else {
-        segments.joinToString(separator = "; ") { it.spanText() }
-    }
-
-private fun WifiSpectrumSegment.spanText(): String =
-    "${lowerFrequencyMhz}-${upperFrequencyMhz} MHz"
-
-private fun WifiSpectrumCompleteness.label(): String =
-    when (this) {
-        WifiSpectrumCompleteness.Complete -> "Complete"
-        WifiSpectrumCompleteness.Partial -> "Partial"
-        WifiSpectrumCompleteness.Unavailable -> "Unavailable"
-        WifiSpectrumCompleteness.Inconsistent -> "Inconsistent"
     }
 
 private fun Boolean.yesNo(): String =
@@ -540,3 +1012,16 @@ private fun previewObservation(
 private fun YeyecatlPlaceholderPreview() {
     YeyecatlApp(scanState = previewScanState())
 }
+
+private fun pollingIntervalLabel(intervalMillis: Long): String =
+    "${intervalMillis / 1_000L} s" +
+        if (intervalMillis == WifiPollingIntervalPolicy.DEFAULT_INTERVAL_MILLIS) {
+            " · Default"
+        } else if (WifiPollingIntervalPolicy.isExperimental(intervalMillis)) {
+            " · Lab"
+        } else {
+            ""
+        }
+
+private const val DYNAMIC_PROGRESS_TICK_MILLIS = 250L
+private const val ALL_BANDS_KEY = "all"

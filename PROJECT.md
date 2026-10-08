@@ -179,6 +179,10 @@ Phase 0 platform and architecture decisions are recorded in:
 - `docs/testing/android-device-validation.md`
 - `docs/testing/continuous-integration.md`
 - `docs/architecture/app-shell.md`
+- `docs/validation/phase-2zero/README.md`
+- `docs/architecture/wifi-temporal-observation.md`
+- `docs/architecture/wifi-access-point-selection-detail.md`
+- `docs/adr/ADR-012-bssid-access-point-detail-selection.md`
 
 ## 5. Suggested Modules / Packages
 
@@ -226,14 +230,33 @@ Start simple. Split into Gradle modules only when build time, ownership, or depe
 | 1H | Launcher visual identity | production adaptive launcher icon with Yeyecatl foreground, background and themed monochrome layers implemented |
 | 1I | Splash + app shell | branded splash, light/dark Compose theme and stable scanner shell implemented without changing RF behavior |
 | 1 | Minimal scanner | nearby scans normalized and displayed reliably |
-| 2 | Analyzer | band/channel views and filtering implemented |
-| 3 | History | observation persistence and signal history available |
+| 2-zero | Static signal ranking | latest snapshot exposes strongest/weakest rankings and lets the spectrum plot switch between All, Strongest 5 and Weakest 5 for the selected band, without temporal behavior |
+| 2A | Temporal observation | foreground repeated scanning, fresh-only bounded BSSID RSSI history and signal-over-time visualization implemented |
+| 2B | Filtering / sorting | current observations can be filtered and sorted deterministically without changing underlying scan/history data |
+| 2C | Network detail | one selected BSSID can be inspected with current RF metadata and retained temporal context |
+| 2D | Analyzer visualizations | analyzer-focused derived views build on existing RF and temporal models without inventing unavailable platform precision |
+| 2E | Structured export | user-initiated, versioned export of supported observation/analyzer data is available |
+| 3 | History | observation persistence, scan sessions and cross-session history available |
 | 4 | Field survey | snapshots, annotations and comparisons available |
 | 5 | Interop | versioned export compatible with Ehécatl concepts |
 
 **Phase 1H status:** complete. The production launcher identity uses mask-safe adaptive icon layers and supports Android 13 themed icons.
 
 **Phase 1I status:** implementation complete on the feature branch; final acceptance requires GitHub CI and Galaxy J8 validation.
+
+**Phase 2-zero status:** complete and physically validated on the Samsung Galaxy J8. The latest scan snapshot is ranked by RSSI and the spectrum can switch between `All / Strongest 5 / Weakest 5` within the selected band. The complete scan snapshot and diagnostic list remain unchanged; no temporal observation semantics were introduced.
+
+**Phase 2A.1 status:** temporal domain baseline introduced. Fresh scan snapshots accumulate RSSI samples by BSSID using snapshot receipt time; cached/unknown snapshots do not create history points.
+
+**Phase 2A.2 status:** foreground dynamic scan cadence introduced and physically validated on the Samsung Galaxy J8. Dynamic mode is explicit, pauses outside the Activity foreground, requests scans every 30 seconds, exposes temporal sample counters, and bounds each BSSID history to the most recent 120 samples. Android scan rejection remains a normal platform outcome.
+
+**Phase 2A.3 status:** signal-over-time visualization physically validated on the Samsung Galaxy J8. The history chart follows the selected band and frozen `All / Strongest 5 / Weakest 5` latest-snapshot scope, draws retained BSSID RSSI samples over their real observation times, and introduces no smoothing, interpolation or persistence. A final readability refinement moves focused-series labels into a compact legend so traces remain readable on-device.
+
+**Phase 2B.1 status:** current-snapshot filtering/sorting and the nearby-network presentation polish are physically accepted on the Samsung Galaxy J8. The list preserves independent band and SSID/BSSID filtering plus deterministic scan-order / strongest / weakest / SSID / channel sorting, while compact cards show SSID, BSSID, RSSI, band, channel and channel width. Cards can expand in place to reveal the raw Android capability string and same-SSID BSSID count without changing the underlying snapshot or Phase 2A temporal history. Additional per-network information remains intentionally deferred to later detail work.
+
+**Phase 2C.1 status:** physically accepted on the Samsung Galaxy J8. Nearby-network cards select one exact BSSID and render current normalized/RF metadata, nominal spectrum geometry and truthful bounded Phase 2A retained-history context. Physical evidence confirms the selected-card state, access-point detail panel, retained RSSI sample context, and preservation of the existing spectrum/history views. Selection remains UI-only; no persistence, vendor lookup, scoring, recommendations or SSID-as-identity behavior is introduced.
+
+**Phase 2D.5.3 status:** complete and release-ready on the Samsung Galaxy J8. The analyzer now includes channel occupancy/overlap, cross-view BSSID interaction, explicit scan-request cadence and throttling semantics, cadence-aware nearby signal-history continuity, dense-history readability, and a separate foreground connected-AP RSSI stream. Connected-link sessions break across disconnect/reconnect, and the dedicated chart provides Fixed (-100..-20 dBm) and hysteretic Auto scaling that contains all samples visible in the rolling two-minute window. Workstation-style history navigation, long-term persistence, annotations and export remain outside this release boundary.
 
 ## 8. Definition of Done
 

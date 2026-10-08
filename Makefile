@@ -9,8 +9,15 @@ endif
 ADB ?= adb
 APP_ID := io.github.dante_souza.yeyecatl
 TEST_APP_ID := $(APP_ID).test
+J8_SERIAL ?=
+G41_SERIAL ?=
+J8_MODEL := SM-J810M
+G41_MODEL := moto_g41
+J8_ADB_MODEL := SM_J810M
+G41_ADB_MODEL := moto_g41
+DEBUG_APK := app/build/outputs/apk/debug/app-debug.apk
 
-.PHONY: help setup build assemble-debug test unit-test android-test android-test-build android-test-install android-test-diagnostics lint check clean install-debug adb-devices device-info device-smoke logcat app-logcat device-diagnostics agents-list skills-list agents-check
+.PHONY: help setup build assemble-debug test unit-test android-test android-test-build android-test-install android-test-diagnostics lint check device-helpers-check clean install-debug install-debug-j8 install-debug-g41 open-app open-app-j8 open-app-g41 adb-devices device-info device-info-j8 device-info-g41 device-smoke device-smoke-j8 device-smoke-g41 logcat app-logcat device-diagnostics agents-list skills-list agents-check
 
 help:
 	@printf '%s\n' \
@@ -29,9 +36,18 @@ help:
 	  '  make check         Run build, tests, lint and agent validation' \
 	  '  make clean         Remove Gradle build outputs' \
 	  '  make install-debug Install debug APK with adb' \
+	  '  make install-debug-j8 Install debug APK on Galaxy J8' \
+	  '  make install-debug-g41 Install debug APK on Moto G41' \
+	  '  make open-app      Launch the already-installed Yeyecatl app' \
+	  '  make open-app-j8   Launch Yeyecatl on Galaxy J8' \
+	  '  make open-app-g41  Launch Yeyecatl on Moto G41' \
 	  '  make adb-devices   List connected adb devices' \
 	  '  make device-info   Show connected device/app environment' \
+	  '  make device-info-j8 Show Galaxy J8 device/app environment' \
+	  '  make device-info-g41 Show Moto G41 device/app environment' \
 	  '  make device-smoke  Install and launch the debug app' \
+	  '  make device-smoke-j8 Build, install and launch on Galaxy J8' \
+	  '  make device-smoke-g41 Build, install and launch on Moto G41' \
 	  '  make logcat        Stream device logcat' \
 	  '  make app-logcat    Stream Yeyecatl scan diagnostics' \
 	  '  make device-diagnostics Write sanitized device diagnostics' \
@@ -97,13 +113,56 @@ android-test-diagnostics: android-test-install
 lint:
 	@$(GRADLE) :app:lintDebug
 
-check: build unit-test android-test-build lint agents-check
+check: build unit-test android-test-build lint device-helpers-check agents-check
+
+device-helpers-check:
+	@$(MAKE) -n device-info-j8 | grep -F '$$serial' >/dev/null
+	@$(MAKE) -n device-info-g41 | grep -F '$$serial' >/dev/null
+	@printf 'List of devices attached\r\nABC123             device product:corfu_g model:moto_g41 device:corfu transport_id:26\r\n' | tr -d '\r' | grep -F 'model:moto_g41' | head -n 1 | awk '{ print $$1 }' | grep -Fx 'ABC123' >/dev/null
+	@printf '%s\n' 'validated device helper escaping and Windows adb -l parsing'
 
 clean:
 	@$(GRADLE) clean
 
 install-debug:
 	@$(GRADLE) :app:installDebug
+
+install-debug-j8: assemble-debug
+	@serial="$(J8_SERIAL)"; \
+	if [ -z "$$serial" ]; then \
+	  serial="$$( $(ADB) devices -l | tr -d '\r' | grep -F 'model:$(J8_ADB_MODEL)' | head -n 1 | awk '{ print $$1 }' )"; \
+	fi; \
+	if [ -z "$$serial" ]; then printf '%s\n' 'ERROR: Galaxy J8 not found. Set J8_SERIAL=... to override.'; exit 1; fi; \
+	$(ADB) -s "$$serial" install --no-streaming -r $(DEBUG_APK)
+
+install-debug-g41: assemble-debug
+	@serial="$(G41_SERIAL)"; \
+	if [ -z "$$serial" ]; then \
+	  serial="$$( $(ADB) devices -l | tr -d '\r' | grep -F 'model:$(G41_ADB_MODEL)' | head -n 1 | awk '{ print $$1 }' )"; \
+	fi; \
+	if [ -z "$$serial" ]; then printf '%s\n' 'ERROR: Moto G41 not found. Set G41_SERIAL=... to override.'; exit 1; fi; \
+	$(ADB) -s "$$serial" install --no-streaming -r $(DEBUG_APK)
+
+open-app:
+	@$(ADB) shell am start -n $(APP_ID)/.MainActivity
+
+open-app-j8:
+	@serial="$(J8_SERIAL)"; \
+	if [ -z "$$serial" ]; then \
+	  serial="$$( $(ADB) devices -l | tr -d '\r' | grep -F 'model:$(J8_ADB_MODEL)' | head -n 1 | awk '{ print $$1 }' )"; \
+	fi; \
+	if [ -z "$$serial" ]; then printf '%s\n' 'ERROR: Galaxy J8 not found. Set J8_SERIAL=... to override.'; exit 1; fi; \
+	$(ADB) -s "$$serial" shell am force-stop $(APP_ID); \
+	$(ADB) -s "$$serial" shell am start -n $(APP_ID)/.MainActivity
+
+open-app-g41:
+	@serial="$(G41_SERIAL)"; \
+	if [ -z "$$serial" ]; then \
+	  serial="$$( $(ADB) devices -l | tr -d '\r' | grep -F 'model:$(G41_ADB_MODEL)' | head -n 1 | awk '{ print $$1 }' )"; \
+	fi; \
+	if [ -z "$$serial" ]; then printf '%s\n' 'ERROR: Moto G41 not found. Set G41_SERIAL=... to override.'; exit 1; fi; \
+	$(ADB) -s "$$serial" shell am force-stop $(APP_ID); \
+	$(ADB) -s "$$serial" shell am start -n $(APP_ID)/.MainActivity
 
 adb-devices:
 	@$(ADB) devices
@@ -119,8 +178,43 @@ device-info:
 	@$(ADB) shell pm list features | grep 'android.hardware.wifi' || true
 	@$(ADB) shell dumpsys package $(APP_ID) | grep -E 'versionName|versionCode' || true
 
-device-smoke: install-debug
-	@$(ADB) shell monkey -p $(APP_ID) 1
+device-info-j8:
+	@serial="$(J8_SERIAL)"; \
+	if [ -z "$$serial" ]; then \
+	  serial="$$( $(ADB) devices -l | tr -d '\r' | grep -F 'model:$(J8_ADB_MODEL)' | head -n 1 | awk '{ print $$1 }' )"; \
+	fi; \
+	if [ -z "$$serial" ]; then printf '%s\n' 'ERROR: Galaxy J8 not found. Set J8_SERIAL=... to override.'; exit 1; fi; \
+	printf 'device=Galaxy J8\nmodel=%s\n' "$(J8_MODEL)"; \
+	printf 'manufacturer='; $(ADB) -s "$$serial" shell getprop ro.product.manufacturer; \
+	printf 'android_release='; $(ADB) -s "$$serial" shell getprop ro.build.version.release; \
+	printf 'api_level='; $(ADB) -s "$$serial" shell getprop ro.build.version.sdk; \
+	printf 'abi='; $(ADB) -s "$$serial" shell getprop ro.product.cpu.abi; \
+	$(ADB) -s "$$serial" shell wm size; \
+	$(ADB) -s "$$serial" shell wm density; \
+	$(ADB) -s "$$serial" shell pm list features | grep 'android.hardware.wifi' || true; \
+	$(ADB) -s "$$serial" shell dumpsys package $(APP_ID) | grep -E 'versionName|versionCode' || true
+
+device-info-g41:
+	@serial="$(G41_SERIAL)"; \
+	if [ -z "$$serial" ]; then \
+	  serial="$$( $(ADB) devices -l | tr -d '\r' | grep -F 'model:$(G41_ADB_MODEL)' | head -n 1 | awk '{ print $$1 }' )"; \
+	fi; \
+	if [ -z "$$serial" ]; then printf '%s\n' 'ERROR: Moto G41 not found. Set G41_SERIAL=... to override.'; exit 1; fi; \
+	printf 'device=Moto G41\nmodel=%s\n' "$(G41_MODEL)"; \
+	printf 'manufacturer='; $(ADB) -s "$$serial" shell getprop ro.product.manufacturer; \
+	printf 'android_release='; $(ADB) -s "$$serial" shell getprop ro.build.version.release; \
+	printf 'api_level='; $(ADB) -s "$$serial" shell getprop ro.build.version.sdk; \
+	printf 'abi='; $(ADB) -s "$$serial" shell getprop ro.product.cpu.abi; \
+	$(ADB) -s "$$serial" shell wm size; \
+	$(ADB) -s "$$serial" shell wm density; \
+	$(ADB) -s "$$serial" shell pm list features | grep 'android.hardware.wifi' || true; \
+	$(ADB) -s "$$serial" shell dumpsys package $(APP_ID) | grep -E 'versionName|versionCode' || true
+
+device-smoke: install-debug open-app
+
+device-smoke-j8: install-debug-j8 open-app-j8
+
+device-smoke-g41: install-debug-g41 open-app-g41
 
 logcat:
 	@$(ADB) logcat

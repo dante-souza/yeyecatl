@@ -1,9 +1,18 @@
 package io.github.dante_souza.yeyecatl
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotDisplayed
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.v2.runComposeUiTest
 import io.github.dante_souza.yeyecatl.domain.wifi.ObservedSsid
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiChannelWidth
@@ -12,6 +21,8 @@ import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanObservation
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanResultSource
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanSnapshot
 import io.github.dante_souza.yeyecatl.domain.wifi.WifiScanState
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiSignalSample
+import io.github.dante_souza.yeyecatl.domain.wifi.WifiTemporalObservationHistory
 import io.github.dante_souza.yeyecatl.ui.YeyecatlApp
 import org.junit.Test
 
@@ -28,6 +39,133 @@ class YeyecatlAppTest {
         onNodeWithText("Scanner").assertIsDisplayed()
         onNodeWithText("Observation").assertIsDisplayed()
         onNodeWithText("Scan Wi-Fi").assertIsDisplayed()
+    }
+
+    @Test
+    fun dynamicScanControlTogglesInHostState() = runComposeUiTest {
+        setContent {
+            var enabled by remember { mutableStateOf(false) }
+            YeyecatlApp(
+                dynamicScanEnabled = enabled,
+                onToggleDynamicScan = { enabled = !enabled }
+            )
+        }
+
+        onNodeWithText("Start dynamic scan").assertIsDisplayed()
+        onNodeWithText("Start dynamic scan").performClick()
+        onNodeWithText("Stop dynamic scan").assertIsDisplayed()
+        onNodeWithText("Requests: 0").assertIsDisplayed()
+        onNodeWithText("Next scan in", substring = true).assertIsDisplayed()
+        onNodeWithText("Fresh updates: 0").assertIsDisplayed()
+        onNodeWithText("History advances only on fresh result updates", substring = true)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun dynamicPollingContainsRejectedRequestStatusWithoutGlobalErrorCopy() = runComposeUiTest {
+        val snapshot = WifiScanSnapshot(
+            observations = listOf(observation()),
+            freshness = WifiScanFreshness.Fresh,
+            source = WifiScanResultSource.ApplicationRequest,
+            resultsUpdated = true,
+            receivedAtMillis = 1_000L
+        )
+        val state = WifiScanState.RequestRejected(
+            message = "Android did not accept the scan request. Existing results may be cached.",
+            latestSnapshot = snapshot
+        )
+
+        setContent {
+            YeyecatlApp(
+                scanState = state,
+                dynamicScanEnabled = true,
+                dynamicScanRequestCount = 12,
+                dynamicScanFreshUpdateCount = 3
+            )
+        }
+
+        onNodeWithText("Results available").assertIsDisplayed()
+        onNodeWithText(
+            "Android did not accept the scan request. Existing results may be cached."
+        ).assertIsNotDisplayed()
+        onNodeWithText(
+            "Last request throttled/rejected by Android",
+            substring = true
+        ).assertIsDisplayed()
+    }
+
+    @Test
+    fun pollingIntervalSelectorUpdatesLiveDynamicCadence() = runComposeUiTest {
+        setContent {
+            var intervalMillis by remember { mutableLongStateOf(5_000L) }
+            YeyecatlApp(
+                dynamicScanEnabled = true,
+                dynamicScanRequestCount = 2,
+                dynamicScanFreshUpdateCount = 1,
+                dynamicScanIntervalMillis = intervalMillis,
+                onDynamicScanIntervalSelected = { intervalMillis = it }
+            )
+        }
+
+        onNodeWithText("Polling interval").assertIsDisplayed()
+        onNodeWithText("1 s").assertIsDisplayed()
+        onNodeWithText("2 s").assertIsDisplayed()
+        onNodeWithText("5 s").assertIsDisplayed()
+        onNodeWithText("10 s").assertIsDisplayed()
+        onNodeWithText("30 s").assertIsDisplayed()
+        onNodeWithText("5s polling", substring = true).assertIsDisplayed()
+
+        onNodeWithText("1 s").performClick()
+        onNodeWithText("1s polling", substring = true).assertIsDisplayed()
+
+        onNodeWithText("30 s").performClick()
+        onNodeWithText("30s polling", substring = true).assertIsDisplayed()
+        onNodeWithText("Requests: 2").assertIsDisplayed()
+        onNodeWithText("Fresh updates: 1").assertIsDisplayed()
+    }
+
+    @Test
+    fun temporalCountersReportTrackedBssidsAndSamples() = runComposeUiTest {
+        val firstSsid = ObservedSsid("mesh", null, false)
+        val secondSsid = ObservedSsid("other", null, false)
+        val history = WifiTemporalObservationHistory(
+            samplesByBssid = mapOf(
+                "00:00:00:00:00:01" to listOf(
+                    WifiSignalSample(
+                        bssid = "00:00:00:00:00:01",
+                        ssid = firstSsid,
+                        rssiDbm = -40,
+                        frequencyMhz = 2412,
+                        observedAtMillis = 1_000L
+                    ),
+                    WifiSignalSample(
+                        bssid = "00:00:00:00:00:01",
+                        ssid = firstSsid,
+                        rssiDbm = -42,
+                        frequencyMhz = 2412,
+                        observedAtMillis = 2_000L
+                    )
+                ),
+                "00:00:00:00:00:02" to listOf(
+                    WifiSignalSample(
+                        bssid = "00:00:00:00:00:02",
+                        ssid = secondSsid,
+                        rssiDbm = -65,
+                        frequencyMhz = 2437,
+                        observedAtMillis = 2_000L
+                    )
+                )
+            )
+        )
+
+        setContent {
+            YeyecatlApp(temporalHistory = history)
+        }
+
+        onNodeWithText("Tracked BSSIDs").assertIsDisplayed()
+        onNodeWithText("2").assertIsDisplayed()
+        onNodeWithText("Signal samples").assertIsDisplayed()
+        onNodeWithText("3").assertIsDisplayed()
     }
 
     @Test
@@ -48,6 +186,341 @@ class YeyecatlAppTest {
     }
 
     @Test
+    fun spectrumSignalScopeFiltersLatestSnapshotWithoutChangingDiagnostics() = runComposeUiTest {
+        val observations = (1..7).map { index ->
+            observation(
+                ssid = "network-$index",
+                bssid = "00:00:00:00:00:${index.toString().padStart(2, '0')}",
+                rssiDbm = -30 - index
+            )
+        }
+
+        setContent {
+            YeyecatlApp(scanState = resultsState(observations))
+        }
+
+        onNodeWithText("Spectrum filter").assertIsDisplayed()
+        onNodeWithText("All").assertIsDisplayed()
+        onNodeWithText("Strongest 5").assertIsDisplayed()
+        onNodeWithText("Weakest 5").assertIsDisplayed()
+        onNodeWithContentDescription(
+            "2.4 GHz Wi-Fi spectrum chart with 7 observed access points"
+        ).assertIsDisplayed()
+
+        onNodeWithText("Strongest 5").performClick()
+        onNodeWithContentDescription(
+            "2.4 GHz Wi-Fi spectrum chart with 5 observed access points"
+        ).assertIsDisplayed()
+
+        onNodeWithText("Weakest 5").performClick()
+        onNodeWithContentDescription(
+            "2.4 GHz Wi-Fi spectrum chart with 5 observed access points"
+        ).assertIsDisplayed()
+
+        onNodeWithText("Observed networks").assertIsDisplayed()
+        onNodeWithText("7").assertIsDisplayed()
+        onNodeWithText("00:00:00:00:00:01").assertIsDisplayed()
+        onNodeWithText("00:00:00:00:00:07").assertIsDisplayed()
+    }
+
+    @Test
+    fun signalHistoryFollowsCurrentSignalScope() = runComposeUiTest {
+        val nowMillis = System.currentTimeMillis()
+        val observations = (1..7).map { index ->
+            observation(
+                ssid = "network-$index",
+                bssid = "00:00:00:00:00:${index.toString().padStart(2, '0')}",
+                rssiDbm = -30 - index
+            )
+        }
+        val history = WifiTemporalObservationHistory(
+            samplesByBssid = observations.associate { observation ->
+                val bssid = requireNotNull(observation.bssid)
+                bssid to listOf(
+                    WifiSignalSample(
+                        bssid = bssid,
+                        ssid = observation.ssid,
+                        rssiDbm = requireNotNull(observation.rssiDbm),
+                        frequencyMhz = observation.frequencyMhz,
+                        observedAtMillis = 1_000L
+                    )
+                )
+            }
+        )
+
+        setContent {
+            YeyecatlApp(
+                scanState = resultsState(observations),
+                temporalHistory = history
+            )
+        }
+
+        onNodeWithText("Signal history").assertIsDisplayed()
+        onNodeWithContentDescription(
+            "2.4 GHz signal history chart with 7 BSSID series and 7 samples"
+        ).assertIsDisplayed()
+        onNodeWithText(
+            "Use Strongest 5 or Weakest 5 for a labeled signal-history view."
+        ).assertIsDisplayed()
+
+        onNodeWithText("Strongest 5").performClick()
+
+        onNodeWithContentDescription(
+            "2.4 GHz signal history chart with 5 BSSID series and 5 samples"
+        ).assertIsDisplayed()
+        onNodeWithContentDescription(
+            "Signal history legend with 5 series"
+        ).assertIsDisplayed()
+    }
+
+    @Test
+    fun nearbyNetworkFiltersRemainIndependentFromSpectrumSelection() = runComposeUiTest {
+        val observations = listOf(
+            observation(
+                ssid = "alpha",
+                bssid = "00:00:00:00:00:01",
+                rssiDbm = -60,
+                frequencyMhz = 2412
+            ),
+            observation(
+                ssid = "bravo",
+                bssid = "00:00:00:00:00:02",
+                rssiDbm = -40,
+                frequencyMhz = 2437
+            ),
+            observation(
+                ssid = "five",
+                bssid = "00:00:00:00:00:03",
+                rssiDbm = -50,
+                frequencyMhz = 5180
+            )
+        )
+
+        setContent {
+            YeyecatlApp(scanState = resultsState(observations))
+        }
+
+        onNodeWithText("Nearby networks").assertIsDisplayed()
+        onNodeWithText("Showing 3 of 3").assertIsDisplayed()
+        onNodeWithText("5 only").performClick()
+        onNodeWithText("Showing 1 of 3").assertIsDisplayed()
+
+        onNodeWithContentDescription(
+            "2.4 GHz Wi-Fi spectrum chart with 2 observed access points"
+        ).assertIsDisplayed()
+
+        onNodeWithText("All bands").performClick()
+        onNodeWithContentDescription("Nearby network text filter").performTextInput("bravo")
+        onNodeWithText("Showing 1 of 3").assertIsDisplayed()
+
+        onNodeWithText("Signal strongest").assertIsDisplayed()
+        onNodeWithText("Signal weakest").assertIsDisplayed()
+        onNodeWithText("SSID A-Z").assertIsDisplayed()
+        onNodeWithText("Channel").assertIsDisplayed()
+    }
+
+    @Test
+    fun staticSignalRankingIsShownForLatestSnapshot() = runComposeUiTest {
+        setContent {
+            YeyecatlApp(
+                scanState = resultsState(
+                    listOf(
+                        observation("strong", "00:00:00:00:00:01", -40),
+                        observation("middle", "00:00:00:00:00:02", -65),
+                        observation("weak", "00:00:00:00:00:03", -90)
+                    )
+                )
+            )
+        }
+
+        onNodeWithText("Signal ranking").assertIsDisplayed()
+        onNodeWithText("Strongest signals").assertIsDisplayed()
+        onNodeWithText("Weakest signals").assertIsDisplayed()
+        onNodeWithText("strong").assertIsDisplayed()
+        onNodeWithText("weak").assertIsDisplayed()
+    }
+
+    @Test
+    fun nearbyNetworkSelectionShowsBssidDetailAndCanBeCleared() = runComposeUiTest {
+        val nowMillis = System.currentTimeMillis()
+        val selectedBssid = "00:00:00:00:00:01"
+        val observation = observation(
+            ssid = "whanganui",
+            bssid = selectedBssid,
+            rssiDbm = -42,
+            frequencyMhz = 2412
+        )
+        val history = WifiTemporalObservationHistory(
+            samplesByBssid = mapOf(
+                selectedBssid to listOf(
+                    WifiSignalSample(
+                        bssid = selectedBssid,
+                        ssid = observation.ssid,
+                        rssiDbm = -45,
+                        frequencyMhz = 2412,
+                        observedAtMillis = nowMillis - 2_000L
+                    ),
+                    WifiSignalSample(
+                        bssid = selectedBssid,
+                        ssid = observation.ssid,
+                        rssiDbm = -42,
+                        frequencyMhz = 2412,
+                        observedAtMillis = nowMillis
+                    )
+                )
+            )
+        )
+
+        setContent {
+            YeyecatlApp(
+                scanState = resultsState(listOf(observation)),
+                temporalHistory = history
+            )
+        }
+
+        onNodeWithContentDescription("Select access point $selectedBssid").performClick()
+        onNodeWithContentDescription(
+            "2.4 GHz Wi-Fi spectrum chart with 1 observed access points; " +
+                "selected BSSID $selectedBssid"
+        ).fetchSemanticsNode()
+        onNodeWithContentDescription(
+            "2.4 GHz signal history chart with 1 BSSID series and 2 samples; " +
+                "selected BSSID $selectedBssid"
+        ).fetchSemanticsNode()
+        onNodeWithText("Selected BSSID").fetchSemanticsNode()
+        onNodeWithText("0 geometric overlap neighbor(s) in this band").fetchSemanticsNode()
+        onNodeWithText("Selected access point").assertIsDisplayed()
+        onNodeWithText("Selected").assertIsDisplayed()
+        onNodeWithText("Primary frequency").assertIsDisplayed()
+        onNodeWithText("2412 MHz").assertIsDisplayed()
+        onNodeWithText("Retained RSSI samples").assertIsDisplayed()
+        onNodeWithText("2").assertIsDisplayed()
+        onNodeWithText("Retained history span").assertIsDisplayed()
+        onNodeWithText("2.0 s").assertIsDisplayed()
+        onNodeWithText("Latest retained RSSI").assertIsDisplayed()
+        onNodeWithText("-42 dBm").assertIsDisplayed()
+        onNodeWithText("Strongest retained RSSI").assertIsDisplayed()
+        onNodeWithText("Weakest retained RSSI").assertIsDisplayed()
+        onNodeWithText("-45 dBm").assertIsDisplayed()
+        onNodeWithText("Retained RSSI range").assertIsDisplayed()
+        onNodeWithText("3 dB").assertIsDisplayed()
+        onNodeWithText("Focused RSSI history").assertIsDisplayed()
+        onNodeWithContentDescription(
+            "Focused RSSI history for $selectedBssid with 2 displayed samples"
+        ).assertIsDisplayed()
+        onNodeWithText("Clear selection").performClick()
+        onNodeWithText("Selected access point").assertIsNotDisplayed()
+    }
+
+    @Test
+    fun selectingNetworkBringsStableFocusedInspectorIntoView() = runComposeUiTest {
+        val observations = (1..12).map { index ->
+            observation(
+                ssid = "network-$index",
+                bssid = "00:00:00:00:00:${index.toString().padStart(2, '0')}",
+                rssiDbm = -40 - index,
+                frequencyMhz = 2412
+            )
+        }
+        val selectedBssid = requireNotNull(observations.last().bssid)
+
+        setContent {
+            YeyecatlApp(
+                scanState = resultsState(observations)
+            )
+        }
+
+        onNodeWithContentDescription("Select access point $selectedBssid")
+            .performScrollTo()
+            .performClick()
+        waitForIdle()
+
+        onNodeWithText("Focused selection").assertIsDisplayed()
+        onNodeWithText("Selected access point").assertIsDisplayed()
+        onNodeWithText("network-12").assertIsDisplayed()
+    }
+
+    @Test
+    fun focusedSelectionStaysOpenAcrossTransientScanMissAndRecovers() = runComposeUiTest {
+        val selectedBssid = "00:00:00:00:00:01"
+        val selected = observation(
+            ssid = "sticky",
+            bssid = selectedBssid,
+            rssiDbm = -42,
+            frequencyMhz = 2412
+        )
+        val other = observation(
+            ssid = "other",
+            bssid = "00:00:00:00:00:02",
+            rssiDbm = -65,
+            frequencyMhz = 2437
+        )
+        val history = WifiTemporalObservationHistory(
+            samplesByBssid = mapOf(
+                selectedBssid to listOf(
+                    WifiSignalSample(
+                        bssid = selectedBssid,
+                        ssid = selected.ssid,
+                        rssiDbm = -42,
+                        frequencyMhz = 2412,
+                        observedAtMillis = 5_000L
+                    )
+                )
+            )
+        )
+        var state by mutableStateOf(
+            resultsState(
+                observations = listOf(selected, other),
+                receivedAtMillis = 5_000L
+            )
+        )
+
+        setContent {
+            YeyecatlApp(
+                scanState = state,
+                temporalHistory = history
+            )
+        }
+
+        onNodeWithContentDescription("Select access point $selectedBssid").performClick()
+        waitForIdle()
+        onNodeWithText("Focused selection").assertIsDisplayed()
+        onNodeWithText("Selected access point").assertIsDisplayed()
+        onNodeWithText("Latest scan").assertIsDisplayed()
+        onNodeWithText("Seen").assertIsDisplayed()
+        onNodeWithText("Last seen").assertIsDisplayed()
+        onNodeWithText("now").assertIsDisplayed()
+
+        state = resultsState(
+            observations = listOf(other),
+            receivedAtMillis = 35_000L
+        )
+        waitForIdle()
+
+        onNodeWithText("Focused selection").assertIsDisplayed()
+        onNodeWithText("Latest scan").assertIsDisplayed()
+        onNodeWithText("Not seen").assertIsDisplayed()
+        onNodeWithText("Last seen").assertIsDisplayed()
+        onNodeWithText("30s ago").assertIsDisplayed()
+        onNodeWithText("Observed RSSI").assertIsDisplayed()
+        onNodeWithText("Clear selection").assertIsDisplayed()
+
+        state = resultsState(
+            observations = listOf(selected.copy(rssiDbm = -39), other),
+            receivedAtMillis = 65_000L
+        )
+        waitForIdle()
+
+        onNodeWithText("Focused selection").assertIsDisplayed()
+        onNodeWithText("Latest scan").assertIsDisplayed()
+        onNodeWithText("Seen").assertIsDisplayed()
+        onNodeWithText("Last seen").assertIsDisplayed()
+        onNodeWithText("now").assertIsDisplayed()
+        onNodeWithText("-39 dBm").assertIsDisplayed()
+        onNodeWithText("Observed RSSI").assertIsDisplayed()
+    }
+
+    @Test
     fun diagnosticListRemainsAvailableWithSyntheticObservation() = runComposeUiTest {
         setContent {
             YeyecatlApp(scanState = resultsState(listOf(observation())))
@@ -55,30 +528,45 @@ class YeyecatlAppTest {
 
         onNodeWithText("Observed networks").assertIsDisplayed()
         onNodeWithText("Freshness").assertIsDisplayed()
-        onNodeWithText("SSID: whanganui", substring = true).assertIsDisplayed()
+        onNodeWithText("00:00:00:00:00:01").assertIsDisplayed()
+        onNodeWithText("2.4 GHz • Ch 1 • 20 MHz").assertIsDisplayed()
+        onNodeWithText("-42 dBm").assertIsDisplayed()
+        onNodeWithText("More").assertIsNotDisplayed()
+        onNodeWithText("Capabilities  [ESS]").assertIsNotDisplayed()
     }
 
-    private fun resultsState(observations: List<WifiScanObservation>): WifiScanState =
+    private fun resultsState(
+        observations: List<WifiScanObservation>,
+        receivedAtMillis: Long = 0L
+    ): WifiScanState =
         WifiScanState.Results(
             WifiScanSnapshot(
                 observations = observations,
                 freshness = WifiScanFreshness.Fresh,
                 source = WifiScanResultSource.ApplicationRequest,
                 resultsUpdated = true,
-                receivedAtMillis = 0L
+                receivedAtMillis = receivedAtMillis
             )
         )
 
     private fun observation(): WifiScanObservation =
+        observation("whanganui", "00:00:00:00:00:01", -42)
+
+    private fun observation(
+        ssid: String,
+        bssid: String,
+        rssiDbm: Int,
+        frequencyMhz: Int = 2412
+    ): WifiScanObservation =
         WifiScanObservation(
             ssid = ObservedSsid(
-                displayText = "whanganui",
+                displayText = ssid,
                 rawBytes = null,
                 isHidden = false
             ),
-            bssid = "00:00:00:00:00:01",
-            rssiDbm = -42,
-            frequencyMhz = 2412,
+            bssid = bssid,
+            rssiDbm = rssiDbm,
+            frequencyMhz = frequencyMhz,
             channelWidth = WifiChannelWidth.Mhz20,
             capabilities = "[ESS]",
             platformTimestampMicros = 1L
