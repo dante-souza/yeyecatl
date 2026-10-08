@@ -45,9 +45,9 @@ class WifiConnectedSignalProjectionTest {
         val range = WifiConnectedSignalProjection.autoTargetRange(
             samples = listOf(
                 sample(-90, 1_000L),
-                sample(-55, 59_000L)
+                sample(-55, 119_000L)
             ),
-            nowMillis = 60_000L
+            nowMillis = 120_000L
         )
 
         assertEquals(-70, range.minRssiDbm)
