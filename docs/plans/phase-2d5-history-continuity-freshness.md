@@ -96,3 +96,30 @@ J8 acceptance:
 - stopping or throttling nearby scans does not stop the connected-link stream;
 - moving far/near the AP should eventually produce visible RSSI change if Android updates WifiInfo;
 - switching/roaming to a different BSSID starts a new connected-link history rather than joining the two traces.
+
+
+## D5.3 — Connected RSSI chart-state + scale polish
+Implemented in source; awaiting J8 validation.
+
+Disconnected behavior:
+- the Connected AP RSSI chart frame remains visible while Wi-Fi is disconnected or RSSI is unavailable;
+- no RSSI trace is drawn while there is no measurable connected signal;
+- an in-chart waiting/disconnected message is shown instead;
+- reconnection starts a new connection session, so samples are never joined across a disconnect even when the time gap is short;
+- previous-session history may reappear after connection returns, but old sessions are visually subdued and the current session is emphasized.
+
+RSSI scale:
+- Fixed is the default and uses -100 to -20 dBm for stable room-to-room comparison;
+- Auto uses the most recent 60 seconds of connected-link reads;
+- Auto adds padding, quantizes bounds to 10 dB steps, keeps at least a 30 dB vertical span, and clamps to -100..-20 dBm;
+- Auto expands immediately to avoid clipping;
+- shrinking requires at least a full 10 dB inward step (hysteresis);
+- while disconnected, the current Auto range is held stable rather than drifting back to the fixed range.
+
+J8 acceptance:
+- disconnect Wi-Fi: axes remain, trace disappears, waiting text appears;
+- reconnect to the same BSSID: trace returns as a new segment with no bridge across the outage;
+- connect to a different BSSID: D5.2 reset behavior remains intact;
+- Fixed mode remains -100..-20 dBm;
+- Auto mode visibly tightens around recent values without second-to-second axis jitter;
+- a strong value around -20 dBm and weak values near -90 dBm are not clipped.
