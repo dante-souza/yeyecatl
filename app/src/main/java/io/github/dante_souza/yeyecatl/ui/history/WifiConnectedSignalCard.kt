@@ -80,9 +80,9 @@ fun WifiConnectedSignalCard(
                     val ssid = sample.ssid.displayText ?: "<hidden/unavailable>"
                     ConnectedValueRow("SSID", ssid)
                     ConnectedValueRow("BSSID", sample.bssid)
-                    ConnectedValueRow("Current link RSSI", "\${sample.rssiDbm} dBm")
+                    ConnectedValueRow("Current link RSSI", "${sample.rssiDbm} dBm")
                     sample.frequencyMhz?.let {
-                        ConnectedValueRow("Frequency", "\$it MHz")
+                        ConnectedValueRow("Frequency", "$it MHz")
                     }
                     ConnectedValueRow("Retained link reads", state.history.samples.size.toString())
                     WifiConnectedSignalHistoryChart(
@@ -181,7 +181,7 @@ private fun WifiConnectedSignalHistoryChart(
             drawLine(gridColor, Offset(plotLeft, y), Offset(plotRight, y))
             drawText(
                 textMeasurer = textMeasurer,
-                text = "\$rssi",
+                text = "$rssi",
                 topLeft = Offset(0f, y - 7.dp.toPx()),
                 style = labelStyle
             )
